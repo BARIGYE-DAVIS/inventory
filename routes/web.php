@@ -1,14 +1,10 @@
-<? php
+<?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Middleware\EnsureAdminAuthenticated;
-use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Auth\{LoginController, RegisterController};
-use App\Http\Controllers\Auth\TwoFactorController;
-
 use App\Http\Controllers\{
     DashboardController,
-
+    Admin\AdminController,
     CashierDashboardController,
     CashierPerformanceController,
     ProfileController,
@@ -59,7 +55,7 @@ Route::middleware('guest')->group(function () {
 | AUTHENTICATED ROUTES
 |--------------------------------------------------------------------------
 */
-Route:: middleware(['auth'])->group(function () {
+Route::middleware(['auth'])->group(function () {
 
     // ========================================
     // LOGOUT
@@ -69,12 +65,12 @@ Route:: middleware(['auth'])->group(function () {
     // ========================================
     // OWNER PROFILE ROUTES (FIXED)
     // ========================================
-    // NOTE: When using Route::prefix('owner'), inner paths MUST NOT repeat "owner". 
+    // NOTE: When using Route::prefix('owner'), inner paths MUST NOT repeat "owner".
     Route::prefix('owner')->name('owner.')->group(function () {
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');                         // GET  /owner/profile
-        Route:: post('/profile', [ProfileController::class, 'update'])->name('profile.update');                    // POST /owner/profile
+        Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');                    // POST /owner/profile
         Route::get('/profile/avatar', [ProfileController::class, 'avatar'])->name('profile.avatar');              // GET  /owner/profile/avatar
-        Route:: post('/profile/email', [ProfileController::class, 'updateEmail'])->name('profile.update_email');   // POST /owner/profile/email
+        Route::post('/profile/email', [ProfileController::class, 'updateEmail'])->name('profile.update_email');   // POST /owner/profile/email
         Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.update_password'); // POST /owner/profile/password
         Route::post('/profile/photo', [ProfileController::class, 'updatePhoto'])->name('profile.update_photo');   // POST /owner/profile/photo
         Route::delete('/profile/photo', [ProfileController::class, 'deletePhoto'])->name('profile.delete_photo'); // DELETE /owner/profile/photo
@@ -92,9 +88,9 @@ Route:: middleware(['auth'])->group(function () {
     // PROFILE MANAGEMENT (Everyone)
     // ========================================
     Route::prefix('profile')->name('profile.')->group(function () {
-        Route::get('/', [ProfileController:: class, 'edit'])->name('edit');
+        Route::get('/', [ProfileController::class, 'edit'])->name('edit');
         Route::patch('/', [ProfileController::class, 'update'])->name('update');
-        Route::patch('/password', [ProfileController::class, 'updatePassword'])->name('password. update');
+        Route::patch('/password', [ProfileController::class, 'updatePassword'])->name('password.update');
         Route::delete('/', [ProfileController::class, 'destroy'])->name('destroy');
     });
 
@@ -118,7 +114,7 @@ Route:: middleware(['auth'])->group(function () {
         Route::get('/weekly', [SaleController::class, 'weekly'])->name('weekly');
         Route::get('/monthly', [SaleController::class, 'monthly'])->name('monthly');
         Route::get('/export/today', [SaleController::class, 'exportToday'])->name('export.today');
-        Route::get('/export/weekly', [SaleController:: class, 'exportWeekly'])->name('export.weekly');
+        Route::get('/export/weekly', [SaleController::class, 'exportWeekly'])->name('export.weekly');
         Route::get('/export/monthly', [SaleController::class, 'exportMonthly'])->name('export.monthly');
         Route::get('/{sale}', [SaleController::class, 'show'])->name('show');
     });
@@ -146,12 +142,12 @@ Route:: middleware(['auth'])->group(function () {
     // ========================================
     // PROFIT REPORT
     // ========================================
-    Route::get('/profit', [ProfitController::class, 'index'])->name('profit. index');
+    Route::get('/profit', [ProfitController::class, 'index'])->name('profit.index');
 
     // ========================================
     // INVENTORY (Role checked in controller)
     // ========================================
-    Route::resource('inventory', InventoryController:: class);
+    Route::resource('inventory', InventoryController::class);
 
     // ========================================
     // SUPPLIERS (Role checked in controller)
@@ -166,7 +162,7 @@ Route:: middleware(['auth'])->group(function () {
     // ========================================
     // REPORTS (Role checked in controller)
     // ========================================
-    Route:: prefix('reports')->name('reports.')->group(function () {
+    Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/sales', [ReportController::class, 'sales'])->name('sales');
         Route::get('/products', [ReportController::class, 'products'])->name('products');
         Route::get('/top-selling', [ReportController::class, 'topSelling'])->name('top-selling');
@@ -177,7 +173,7 @@ Route:: middleware(['auth'])->group(function () {
     // ========================================
     // STAFF MANAGEMENT (Role checked in controller)
     // ========================================
-    Route:: prefix('staff')->name('staff.')->group(function () {
+    Route::prefix('staff')->name('staff.')->group(function () {
         Route::get('/', [StaffController::class, 'index'])->name('index');
         Route::get('/create', [StaffController::class, 'create'])->name('create');
         Route::post('/', [StaffController::class, 'store'])->name('store');
@@ -212,7 +208,7 @@ Route:: middleware(['auth'])->group(function () {
         Route::put('/tax', [SettingsController::class, 'updateTax'])->name('update-tax');
 
         // Toggle Business Status
-        Route::post('/toggle-status', [SettingsController:: class, 'toggleStatus'])->name('toggle-status');
+        Route::post('/toggle-status', [SettingsController::class, 'toggleStatus'])->name('toggle-status');
     });
 
     // ========================================
@@ -251,7 +247,7 @@ Route:: middleware(['auth'])->group(function () {
         // Profile
         Route::get('/profile', [CashierProfileController::class, 'edit'])->name('profile');
         Route::patch('/profile', [CashierProfileController::class, 'update'])->name('profile.update');
-        Route::patch('/profile/password', [CashierProfileController:: class, 'updatePassword'])->name('profile.password');
+        Route::patch('/profile/password', [CashierProfileController::class, 'updatePassword'])->name('profile.password');
     });
 });
 
@@ -261,7 +257,7 @@ Route:: middleware(['auth'])->group(function () {
 Route::middleware(['auth'])->group(function () {
     // Owner/Manager (full privileges)
     Route::get('/expenses/create', [ExpenseController::class, 'create'])->name('expenses.create');
-    Route::post('/expenses', [ExpenseController:: class, 'store'])->name('expenses.store');
+    Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
 
     Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
     Route::get('/expenses/today', [ExpenseController::class, 'today'])->name('expenses.today');
@@ -281,51 +277,16 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
-// ========================================
-// BUSINESS USER 2FA ROUTES (EXISTING - KEPT AS IS)
-// ========================================
+use App\Http\Controllers\Auth\TwoFactorController;
+
+// Place this inside your existing Route::middleware(['auth'])->group(...)
 Route::middleware(['auth'])->group(function () {
     Route::get('/auth/2fa', [TwoFactorController::class, 'show'])->name('auth.twofactor.show');
     Route::post('/auth/2fa/verify', [TwoFactorController::class, 'verify'])->name('auth.twofactor.verify');
     Route::post('/auth/2fa/resend', [TwoFactorController::class, 'resend'])->name('auth.twofactor.resend');
 });
 
-// ========================================
-// ADMIN ROUTES (COMPLETELY SEPARATE)
-// ========================================
-Route:: prefix('admin')->name('admin.')->group(function () {
 
-    // Guest-only admin endpoints
-    Route::middleware('guest:admin')->group(function () {
-        Route::get('/setup', [AdminController::class, 'showSetup'])->name('setup.show');
-        Route::post('/setup', [AdminController::class, 'storeSetup'])->name('setup.store');
 
-        Route::get('/login', [AdminController::class, 'showLogin'])->name('login');
-        Route::post('/login', [AdminController::class, 'login'])->name('login.attempt');
-    });
-
-    // Authenticated admin endpoints
-    Route::middleware('auth:admin')->group(function () {
-        Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
-        Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
-
-        Route::get('/profile', [AdminController::class, 'editProfile'])->name('profile.edit');
-        Route::patch('/profile', [AdminController::class, 'updateProfile'])->name('profile.update');
-
-        Route::get('/users', [AdminController::class, 'users'])->name('users.index');
-        Route::patch('/users/{user}/email', [AdminController::class, 'updateUserEmail'])->name('users.email.update');
-        Route::patch('/users/{user}/plan', [AdminController::class, 'updateUserPlan'])->name('users.plan.update');
-        Route::patch('/users/{user}/toggle', [AdminController::class, 'toggleUserActive'])->name('users.toggle');
-
-        Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
-    });
-
-    // ========================================
-    // ADMIN 2FA ROUTES (SEPARATE FROM BUSINESS)
-    // ========================================
-    Route::middleware('auth:admin')->group(function () {
-        Route::get('/auth/2fa', [TwoFactorController:: class, 'show'])->name('admin.auth.twofactor.show');
-        Route::post('/auth/2fa/verify', [TwoFactorController::class, 'verify'])->name('admin.auth.twofactor.verify');
-        Route::post('/auth/2fa/resend', [TwoFactorController::class, 'resend'])->name('admin.auth.twofactor.resend');
-    });
-});
+// Include admin routes
+require __DIR__ . '/admin.php';

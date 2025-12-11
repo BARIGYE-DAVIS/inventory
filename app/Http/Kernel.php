@@ -49,6 +49,6 @@ class Kernel extends HttpKernel
         'user.activity' => \App\Http\Middleware\UpdateUserLastActivity::class,
 
         // Admin-only auth gate
-        'auth.admin' =>\App\Http\Middleware\EnsureAdminAuthenticated::class,
+        'auth.admin' => \App\Http\Middleware\AdminMiddleware::class,
     ];
 }

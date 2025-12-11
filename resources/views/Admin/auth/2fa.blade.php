@@ -1,4 +1,4 @@
-<! DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -11,7 +11,7 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            background:  linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
         .card {
             box-shadow: 0 10px 25px rgba(0,0,0,0.2);
@@ -36,7 +36,7 @@
                         <h3 class="mb-0">Two Factor Verification</h3>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted">A verification code has been sent to your email address.</p>
+                        <p class="text-muted">A verification code has been sent to your email.</p>
 
                         @if($errors->any())
                             <div class="alert alert-danger">
@@ -44,34 +44,23 @@
                             </div>
                         @endif
 
-                        @php
-                            $route = ($guard ??  'web') === 'admin' 
-                                ? 'admin.auth.twofactor. verify' 
-                                : 'auth.twofactor.verify';
-                            $resendRoute = ($guard ?? 'web') === 'admin' 
-                                ? 'admin.auth. twofactor.resend' 
-                                : 'auth. twofactor.resend';
-                        @endphp
-
-                        <form method="POST" action="{{ route($route) }}">
+                        <form method="POST" action="{{ route('admin.auth. twofactor.verify') }}">
                             @csrf
 
                             <div class="mb-3">
                                 <label for="code" class="form-label">Verification Code</label>
-                                <input type="text" id="code" name="code" 
-                                       class="form-control @error('code') is-invalid @enderror" 
-                                       placeholder="000000" maxlength="6" 
-                                       inputmode="numeric" required autofocus>
+                                <input type="text" id="code" name="code" class="form-control @error('code') is-invalid @enderror" 
+                                       placeholder="000000" maxlength="6" inputmode="numeric" required autofocus>
                                 @error('code')<span class="invalid-feedback">{{ $message }}</span>@enderror
                             </div>
 
                             <div class="d-grid">
-                                <button type="submit" class="btn btn-primary btn-lg">Verify & Login</button>
+                                <button type="submit" class="btn btn-primary btn-lg">Verify</button>
                             </div>
                         </form>
 
                         <div class="text-center mt-3">
-                            <form method="POST" action="{{ route($resendRoute) }}" style="display:inline;">
+                            <form method="POST" action="{{ route('admin.auth.twofactor. resend') }}" style="display:inline;">
                                 @csrf
                                 <button class="btn btn-link" type="submit">Resend code</button>
                             </form>
@@ -81,7 +70,6 @@
             </div>
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap. bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
