@@ -49,8 +49,8 @@
                                 ? 'admin.auth.twofactor. verify' 
                                 : 'auth.twofactor.verify';
                             $resendRoute = ($guard ?? 'web') === 'admin' 
-                                ? 'admin.auth. twofactor.resend' 
-                                : 'auth. twofactor.resend';
+                                ? 'admin.auth.twofactor.resend' 
+                                : 'auth.twofactor.resend';
                         @endphp
 
                         <form method="POST" action="{{ route($route) }}">

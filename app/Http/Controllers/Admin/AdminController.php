@@ -13,8 +13,6 @@ use Illuminate\Validation\ValidationException;
 
 class AdminController extends Controller
 {
-    protected string $twoFactorRoute = 'admin.auth.twofactor. show';
-
     // ========================================
     // SETUP (First Admin)
     // ========================================
@@ -44,13 +42,13 @@ class AdminController extends Controller
             'password' => Hash::make($data['password']),
             'is_active' => true,
             'is_superadmin' => true,
-            'two_factor_enabled' => true,
         ]);
 
         Auth::guard('admin')->login($admin);
+        $request->session()->regenerate();
 
-        return redirect()->route($this->twoFactorRoute)
-            ->with('success', 'Admin account created.  Please verify with 2FA.');
+        return redirect()->route('admin.auth.twofactor.show')
+            ->with('success', 'Admin created.  Verify with 2FA.');
     }
 
     // ========================================
@@ -59,7 +57,7 @@ class AdminController extends Controller
     public function showLogin()
     {
         if (! Admin::exists()) {
-            return redirect()->route('admin.setup. show');
+            return redirect()->route('admin.setup.show');
         }
         return view('admin.auth.login');
     }
@@ -72,7 +70,7 @@ class AdminController extends Controller
             'remember' => ['nullable', 'boolean'],
         ]);
 
-        $admin = Admin::where('email', $data['email'])->first();
+        $admin = Admin:: where('email', $data['email'])->first();
         
         if ($admin && ! $admin->is_active) {
             throw ValidationException::withMessages([
@@ -96,8 +94,8 @@ class AdminController extends Controller
             $authAdmin->update(['last_login_at' => now()]);
         }
 
-        return redirect()->route($this->twoFactorRoute)
-            ->with('success', 'Verification code sent to your email.');
+        return redirect()->route('admin.auth.twofactor.show')
+            ->with('success', 'Verification code sent.');
     }
 
     // ========================================
@@ -110,19 +108,29 @@ class AdminController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('admin.login')
-            ->with('success', 'Logged out successfully.');
+            ->with('success', 'Logged out.');
     }
 
     // ========================================
-    // DASHBOARD
+    // DASHBOARD (Protected)
     // ========================================
     public function dashboard()
     {
+        // ✅ CHECK IF ADMIN IS LOGGED IN
+        if (!Auth::guard('admin')->check()) {
+            return redirect()->route('admin.login');
+        }
+
+        // ✅ CHECK IF 2FA IS VERIFIED
+        if (session('two_factor_verified') !== true) {
+            return redirect()->route('admin.auth.twofactor.show');
+        }
+
         $admin = Auth::guard('admin')->user();
         
         $stats = [
             'total_users' => User::count(),
-            'active_users' => User:: where('is_active', true)->count(),
+            'active_users' => User::where('is_active', true)->count(),
             'inactive_users' => User::where('is_active', false)->count(),
         ];
 
@@ -130,10 +138,18 @@ class AdminController extends Controller
     }
 
     // ========================================
-    // USERS MANAGEMENT
+    // USERS MANAGEMENT (Protected)
     // ========================================
     public function users(Request $request)
     {
+        // ✅ PROTECT THIS ROUTE
+        if (!Auth:: guard('admin')->check()) {
+            return redirect()->route('admin.login');
+        }
+        if (session('two_factor_verified') !== true) {
+            return redirect()->route('admin.auth.twofactor.show');
+        }
+
         $query = User::query();
 
         if ($request->filled('search')) {
@@ -153,14 +169,30 @@ class AdminController extends Controller
 
     public function toggleUserActive(User $user)
     {
+        // ✅ PROTECT THIS ROUTE
+        if (!Auth::guard('admin')->check()) {
+            return redirect()->route('admin.login');
+        }
+        if (session('two_factor_verified') !== true) {
+            return redirect()->route('admin.auth.twofactor.show');
+        }
+
         $user->update(['is_active' => !$user->is_active]);
 
         return back()->with('success', 
-            $user->is_active ? 'User activated.' : 'User deactivated.');
+            $user->is_active ?  'User activated.' : 'User deactivated.');
     }
 
     public function updateUserEmail(Request $request, User $user)
     {
+        // ✅ PROTECT THIS ROUTE
+        if (!Auth::guard('admin')->check()) {
+            return redirect()->route('admin.login');
+        }
+        if (session('two_factor_verified') !== true) {
+            return redirect()->route('admin.auth.twofactor.show');
+        }
+
         $data = $request->validate([
             'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
         ]);
@@ -171,16 +203,32 @@ class AdminController extends Controller
     }
 
     // ========================================
-    // PROFILE
+    // PROFILE (Protected)
     // ========================================
     public function editProfile()
     {
+        // ✅ PROTECT THIS ROUTE
+        if (!Auth::guard('admin')->check()) {
+            return redirect()->route('admin.login');
+        }
+        if (session('two_factor_verified') !== true) {
+            return redirect()->route('admin.auth.twofactor.show');
+        }
+
         $admin = Auth::guard('admin')->user();
-        return view('admin.profile. edit', compact('admin'));
+        return view('admin.profile.edit', compact('admin'));
     }
 
     public function updateProfile(Request $request)
     {
+        // ✅ PROTECT THIS ROUTE
+        if (!Auth::guard('admin')->check()) {
+            return redirect()->route('admin.login');
+        }
+        if (session('two_factor_verified') !== true) {
+            return redirect()->route('admin.auth.twofactor.show');
+        }
+
         $admin = Auth::guard('admin')->user();
 
         $data = $request->validate([
@@ -193,7 +241,7 @@ class AdminController extends Controller
         $admin->email = $data['email'];
         
         if (! empty($data['password'])) {
-            $admin->password = Hash:: make($data['password']);
+            $admin->password = Hash::make($data['password']);
         }
         
         $admin->save();

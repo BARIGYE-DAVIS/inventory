@@ -18,30 +18,19 @@ return [
             'driver' => 'session',
             'provider' => 'admins',
         ],
-
-        // API guards (optional)
-        // 'api' => [
-        //     'driver' => 'token',
-        //     'provider' => 'users',
-        // ],
     ],
 
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => App\Models\User::class,
+            'model' => 'App\Models\User',  // ✅ ADD QUOTES
         ],
 
         // Admin provider (points to your Admin model)
         'admins' => [
             'driver' => 'eloquent',
-            'model' => App\Models\Admin::class,
+            'model' => 'App\Models\Admin',  // ✅ ADD QUOTES
         ],
-
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
     ],
 
     'passwords' => [
@@ -52,10 +41,10 @@ return [
             'throttle' => 60,
         ],
 
-        // Admin password reset config (optional, if you use password resets for admins)
+        // Admin password reset config
         'admins' => [
             'provider' => 'admins',
-            'table' => 'admin_password_reset_tokens', // you can reuse the users table if you prefer
+            'table' => 'password_reset_tokens',
             'expire' => 60,
             'throttle' => 60,
         ],

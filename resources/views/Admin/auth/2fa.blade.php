@@ -44,7 +44,7 @@
                             </div>
                         @endif
 
-                        <form method="POST" action="{{ route('admin.auth. twofactor.verify') }}">
+                        <form method="POST" action="{{ route('admin.auth.twofactor.verify') }}">
                             @csrf
 
                             <div class="mb-3">
@@ -60,7 +60,7 @@
                         </form>
 
                         <div class="text-center mt-3">
-                            <form method="POST" action="{{ route('admin.auth.twofactor. resend') }}" style="display:inline;">
+                            <form method="POST" action="{{ route('admin.auth.twofactor.resend') }}" style="display:inline;">
                                 @csrf
                                 <button class="btn btn-link" type="submit">Resend code</button>
                             </form>
