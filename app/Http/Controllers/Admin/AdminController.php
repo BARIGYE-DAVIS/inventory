@@ -17,7 +17,7 @@ class AdminController extends Controller
      * Change this to your existing 2FA verification route name.
      * Example: 'auth.twofactor.show' or 'twofactor.verify.show'
      */
-    protected string $twoFactorRoute = 'auth.twofactor.show';
+    protected string $twoFactorRoute = 'admin.auth.twofactor.show';
 
     /**
      * STEP 1: First-time setup (only if no admin exists).
