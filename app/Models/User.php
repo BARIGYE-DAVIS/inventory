@@ -18,6 +18,7 @@ class User extends Authenticatable
     protected $fillable = [
         'business_id',
         'role_id',
+        'location_id',
         'name',
         'email',
         'phone',
@@ -56,6 +57,11 @@ class User extends Authenticatable
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class);
+    }
+
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
     }
 
     public function sales(): HasMany

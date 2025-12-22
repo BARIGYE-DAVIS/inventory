@@ -37,48 +37,57 @@
             </div>
         </div>
 
-        <!-- Products Grid -->
+        <!-- Products Table -->
         <div class="bg-white rounded-xl shadow-lg p-4">
             <h3 class="text-lg font-bold text-gray-800 mb-4">
                 <i class="fas fa-box text-green-600 mr-2"></i>Products
             </h3>
             
-            <div id="productsGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[calc(100vh-300px)] overflow-y-auto">
-                @forelse($products as $product)
-                    <div class="product-card border border-gray-200 rounded-lg p-3 hover:shadow-lg transition cursor-pointer"
-                         data-id="{{ $product->id }}"
-                         data-name="{{ $product->name }}"
-                         data-price="{{ $product->selling_price }}"
-                         data-stock="{{ $product->quantity }}"
-                         data-unit="{{ $product->unit }}"
-                         data-category="{{ $product->category_id ?? '' }}"
-                         onclick="addToCart({{ $product->id }}, '{{ $product->name }}', {{ $product->selling_price }}, '{{ $product->unit }}', {{ $product->quantity }})">
-                        
-                        <!-- Product Image -->
-                        <div class="aspect-square bg-gray-100 rounded-lg mb-2 overflow-hidden">
-                            <img src="{{ $product->image_url }}" 
-                                 alt="{{ $product->name }}" 
-                                 class="w-full h-full object-cover">
-                        </div>
-
-                        <!-- Product Info -->
-                        <h4 class="font-semibold text-sm text-gray-900 truncate" title="{{ $product->name }}">
-                            {{ $product->name }}
-                        </h4>
-                        <p class="text-xs text-gray-500">{{ $product->sku }}</p>
-                        <p class="text-lg font-bold text-green-600 mt-1">
-                            UGX {{ number_format($product->selling_price, 0) }}
-                        </p>
-                        <p class="text-xs text-gray-600">
-                            Stock: {{ $product->quantity }} {{ $product->unit }}
-                        </p>
-                    </div>
-                @empty
-                    <div class="col-span-full text-center py-8 text-gray-500">
-                        <i class="fas fa-box-open text-4xl mb-2"></i>
-                        <p>No products available</p>
-                    </div>
-                @endforelse
+            <div class="overflow-y-auto max-h-[calc(100vh-300px)]">
+                <table class="w-full">
+                    <thead class="bg-gray-100 sticky top-0">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-700">Product Name</th>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-700">SKU</th>
+                            <th class="px-4 py-2 text-right text-xs font-semibold text-gray-700">Price</th>
+                            <th class="px-4 py-2 text-right text-xs font-semibold text-gray-700">Stock</th>
+                            <th class="px-4 py-2 text-center text-xs font-semibold text-gray-700">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        @forelse($products as $product)
+                            <tr class="hover:bg-gray-50 cursor-pointer transition"
+                                 data-id="{{ $product->id }}"
+                                 data-name="{{ $product->name }}"
+                                 data-price="{{ $product->selling_price }}"
+                                 data-stock="{{ $product->quantity }}"
+                                 data-unit="{{ $product->unit }}"
+                                 data-category="{{ $product->category_id ?? '' }}">
+                                <td class="px-4 py-3 text-sm font-semibold text-gray-900">{{ $product->name }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-600">{{ $product->sku }}</td>
+                                <td class="px-4 py-3 text-sm font-bold text-green-600 text-right">
+                                    UGX {{ number_format($product->selling_price, 0) }}
+                                </td>
+                                <td class="px-4 py-3 text-sm text-gray-600 text-right">
+                                    {{ $product->quantity }} {{ $product->unit }}
+                                </td>
+                                <td class="px-4 py-3 text-center">
+                                    <button onclick="addToCart({{ $product->id }}, '{{ $product->name }}', {{ $product->selling_price }}, '{{ $product->unit }}', {{ $product->quantity }})"
+                                            class="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition">
+                                        <i class="fas fa-plus-circle mr-1"></i>Add
+                                    </button>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="px-4 py-12 text-center text-gray-500">
+                                    <i class="fas fa-box-open text-3xl mb-2"></i>
+                                    <p>No products available</p>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -639,16 +648,17 @@
 
     // Filter products
     function filterProducts(search, category) {
-        const products = document.querySelectorAll('.product-card');
+        const rows = document.querySelectorAll('tbody tr');
         
-        products.forEach(product => {
-            const name = product.dataset.name.toLowerCase();
-            const productCategory = product.dataset.category;
+        rows.forEach(row => {
+            const name = row.dataset.name ? row.dataset.name.toLowerCase() : '';
+            const sku = row.querySelector('td:nth-child(2)') ? row.querySelector('td:nth-child(2)').textContent.toLowerCase() : '';
+            const productCategory = row.dataset.category;
             
-            const matchesSearch = name.includes(search) || search === '';
+            const matchesSearch = name.includes(search) || sku.includes(search) || search === '';
             const matchesCategory = category === '' || productCategory === category;
             
-            product.style.display = (matchesSearch && matchesCategory) ? 'block' : 'none';
+            row.style.display = (matchesSearch && matchesCategory) ? 'table-row' : 'none';
         });
     }
 

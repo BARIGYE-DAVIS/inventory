@@ -67,36 +67,39 @@ class ProductController extends Controller
         ->orderBy('name')
         ->get();
 
-    // ✅ AJAX REQUEST - Return JSON with HTML (for cashier grid view)
+    // ✅ AJAX REQUEST - Return JSON with HTML (for cashier table view)
     if ($request->ajax() || $request->has('ajax')) {
         $html = '';
         
         if ($products->count() > 0) {
             foreach ($products as $product) {
-                $stockClass = $product->quantity < 10 ?  'text-red-600 font-bold' : 'text-gray-600';
-                $imageHtml = $product->image 
-                    ? '<img src="' . asset('storage/' .  $product->image) . '" alt="' . $product->name . '" class="w-full h-full object-cover">'
-                    : '<div class="w-full h-full flex items-center justify-center"><i class="fas fa-box text-4xl text-gray-300"></i></div>';
+                $stockClass = $product->quantity < 10 ? 'text-red-600 font-bold' : 'text-gray-600';
+                $categoryHtml = $product->category 
+                    ? '<span class="inline-block px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">' . $product->category->name . '</span>'
+                    : '<span class="text-gray-400">-</span>';
                 
                 $html .= '
-                <a href="' . route('products. show', $product->id) .  '" class="border border-gray-200 rounded-lg p-3 hover:shadow-lg transition cursor-pointer">
-                    <div class="aspect-square bg-gray-100 rounded-lg mb-2 overflow-hidden">
-                        ' . $imageHtml . '
-                    </div>
-                    <h4 class="font-semibold text-sm text-gray-900 truncate" title="' . $product->name . '">' . $product->name . '</h4>
-                    ' . ($product->sku ? '<p class="text-xs text-gray-500">' . $product->sku . '</p>' : '') . '
-                    <p class="text-lg font-bold text-green-600 mt-1">UGX ' . number_format($product->selling_price, 0) .  '</p>
-                    <p class="text-xs ' . $stockClass . '">Stock: ' . $product->quantity . ' ' . ($product->unit ?? 'pcs') . '</p>
-                    ' . ($product->category ? '<span class="inline-block mt-2 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">' . $product->category->name . '</span>' : '') . '
-                </a>';
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-4 py-3 text-sm font-semibold text-gray-900">' . $product->name . '</td>
+                    <td class="px-4 py-3 text-sm text-gray-600">' . ($product->sku ?? '-') . '</td>
+                    <td class="px-4 py-3 text-sm text-gray-600">' . $categoryHtml . '</td>
+                    <td class="px-4 py-3 text-sm font-bold text-green-600 text-right">UGX ' . number_format($product->selling_price, 0) . '</td>
+                    <td class="px-4 py-3 text-sm text-right ' . $stockClass . '">' . $product->quantity . ' ' . ($product->unit ?? 'pcs') . '</td>
+                    <td class="px-4 py-3 text-center">
+                        <a href="' . route('products.show', $product->id) . '" class="inline-flex items-center px-3 py-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 transition">
+                            <i class="fas fa-eye mr-1"></i>View
+                        </a>
+                    </td>
+                </tr>';
             }
         } else {
             $html = '
-            <div class="col-span-full text-center py-12">
-                <i class="fas fa-search-minus text-6xl text-gray-300 mb-4"></i>
-                <p class="text-gray-500 text-lg">No products found</p>
-                <p class="text-gray-400 text-sm mt-2">Try a different search term or category</p>
-            </div>';
+            <tr>
+                <td colspan="6" class="px-4 py-12 text-center text-gray-500">
+                    <i class="fas fa-search-minus text-3xl mb-2"></i>
+                    <p class="text-lg">No products found</p>
+                </td>
+            </tr>';
         }
         
         return response()->json([
@@ -203,7 +206,6 @@ public function store(Request $request)
         'expiry_alert_days' => 'nullable|integer|min:1|max:365',
         
         'description' => 'nullable|string',
-        'image' => 'nullable|image|max:2048',
     ]);
 
     // ✅ HANDLE NEW CATEGORY CREATION
@@ -220,11 +222,6 @@ public function store(Request $request)
     // ✅ SET BUSINESS ID
     $validated['business_id'] = $user->business_id;
     $validated['is_active'] = true;
-
-    // ✅ Handle image upload
-    if ($request->hasFile('image')) {
-        $validated['image'] = $request->file('image')->store('products', 'public');
-    }
 
     // ✅ SET DEFAULT QUANTITY IF NOT PROVIDED
     if (!isset($validated['quantity'])) {
@@ -295,17 +292,7 @@ public function store(Request $request)
             'reorder_level' => 'nullable|integer|min:0',
             'expiry_date' => 'nullable|date',
             'description' => 'nullable|string',
-            'image' => 'nullable|image|max:2048',
         ]);
-
-        // Handle image upload
-        if ($request->hasFile('image')) {
-            // Delete old image
-            if ($product->image) {
-                Storage::disk('public')->delete($product->image);
-            }
-            $validated['image'] = $request->file('image')->store('products', 'public');
-        }
 
         $product->update($validated);
 

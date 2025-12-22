@@ -369,13 +369,9 @@
                             @forelse($myTopProducts as $product)
                             <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
                                 <div class="flex items-center space-x-3">
-                                    @if($product->image)
-                                    <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->name }}" class="w-10 h-10 rounded object-cover">
-                                    @else
                                     <div class="w-10 h-10 bg-gradient-to-br from-indigo-100 to-purple-100 rounded flex items-center justify-center">
                                         <i class="fas fa-box text-indigo-400"></i>
                                     </div>
-                                    @endif
                                     <div>
                                         <p class="font-semibold text-gray-800 text-sm">{{ $product->name }}</p>
                                         <p class="text-xs text-gray-500">

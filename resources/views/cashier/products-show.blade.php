@@ -20,18 +20,10 @@
     <div class="bg-white rounded-xl shadow-lg overflow-hidden">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
             
-            <!-- Product Image -->
+            <!-- Product Icon -->
             <div>
-                <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                    @if($product->image)
-                    <img src="{{ asset('storage/' . $product->image) }}" 
-                         alt="{{ $product->name }}" 
-                         class="w-full h-full object-cover">
-                    @else
-                    <div class="w-full h-full flex items-center justify-center">
-                        <i class="fas fa-box text-9xl text-gray-300"></i>
-                    </div>
-                    @endif
+                <div class="aspect-square bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg overflow-hidden flex items-center justify-center">
+                    <i class="fas fa-box text-9xl text-indigo-400"></i>
                 </div>
             </div>
 

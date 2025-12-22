@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 use App\Services\MailerService;
-use App\Models\{Product, Customer, Sale, SaleItem, Category};
+use App\Models\{Product, Customer, Sale, SaleItem, Category, Inventory, Location};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Auth, DB, Mail, Log};
 use App\Mail\SaleReceiptMail; // ✅ ADD THIS
@@ -18,18 +18,40 @@ class POSController extends Controller
         $businessId = $user->business_id;
         $userRole = $user->role->name;
 
-        // Get active products with stock
-        $products = Product::where('business_id', $businessId)
-            ->where('is_active', true)
-            ->where('quantity', '>', 0)
-            ->with('category')
-            ->orderBy('name')
-            ->get();
+        // Get user's assigned location or all locations for owner
+        $locationId = null;
+        if ($userRole !== 'owner' && $user->location_id) {
+            $locationId = $user->location_id;
+        }
+
+        // Get active inventory items with stock
+        $query = Inventory::with('product.category', 'location')
+            ->where('business_id', $businessId)
+            ->whereHas('product', function($q) {
+                $q->where('is_active', true);
+            })
+            ->where('quantity', '>', 0);
+
+        if ($locationId) {
+            $query->where('location_id', $locationId);
+        }
+
+        // Get inventory grouped by product
+        $inventoryItems = $query->get();
+        
+        // Extract products for compatibility
+        $products = $inventoryItems->map(function($item) {
+            $product = $item->product;
+            $product->inventory_id = $item->id;
+            $product->location_id = $item->location_id;
+            $product->quantity = $item->quantity; // Use inventory quantity
+            return $product;
+        });
 
         // Get categories for filtering
         $categories = Category::where('business_id', $businessId)
             ->withCount(['products' => function($query) {
-                $query->where('is_active', true)->where('quantity', '>', 0);
+                $query->where('is_active', true);
             }])
             ->having('products_count', '>', 0)
             ->orderBy('name')
@@ -41,22 +63,26 @@ class POSController extends Controller
             ->orderBy('name')
             ->get();
 
+        // Get user's location info
+        $userLocation = $user->location_id ? Location::find($user->location_id) : null;
+
         // Load different view based on role
         if ($userRole === 'cashier') {
-            return view('cashier.pos', compact('products', 'categories', 'customers'));
+            return view('cashier.pos', compact('products', 'categories', 'customers', 'userLocation'));
         }
 
-        return view('pos.index', compact('products', 'categories', 'customers'));
+        return view('pos.index', compact('products', 'categories', 'customers', 'userLocation'));
     }
 
     /**
      * Process sale transaction
-     * ✅ FIXED: Now sends email receipt
+     * ✅ FIXED: Now uses Inventory table and respects user location
      */
     public function process(Request $request)
     {
         $user = Auth::user();
         $businessId = $user->business_id;
+        $userRole = $user->role->name;
 
         // Validation rules
         $rules = [
@@ -150,13 +176,35 @@ class POSController extends Controller
                 'notes' => $validated['notes'] ?? null,
             ]);
 
-            // Create sale items
+            // Create sale items and update inventory
             foreach ($validated['items'] as $item) {
                 $product = Product::findOrFail($item['product_id']);
 
-                // Check stock
-                if ($product->quantity < $item['quantity']) {
-                    throw new \Exception("Insufficient stock for {$product->name}. Available: {$product->quantity}");
+                // Determine which location to pull from
+                if ($userRole !== 'owner' && $user->location_id) {
+                    // Cashier/Staff: Pull from their assigned location
+                    $inventory = Inventory::where('business_id', $businessId)
+                        ->where('product_id', $item['product_id'])
+                        ->where('location_id', $user->location_id)
+                        ->first();
+                } else {
+                    // Owner: Pull from default/main location
+                    $location = Location::where('business_id', $businessId)
+                        ->where('is_main', true)
+                        ->first();
+                    $locationId = $location ? $location->id : Inventory::where('business_id', $businessId)
+                        ->where('product_id', $item['product_id'])
+                        ->value('location_id');
+                    
+                    $inventory = Inventory::where('business_id', $businessId)
+                        ->where('product_id', $item['product_id'])
+                        ->where('location_id', $locationId)
+                        ->first();
+                }
+
+                if (!$inventory || $inventory->quantity < $item['quantity']) {
+                    $availableQty = $inventory ? $inventory->quantity : 0;
+                    throw new \Exception("Insufficient stock for {$product->name}. Available: {$availableQty}");
                 }
 
                 // Create sale item
@@ -168,7 +216,10 @@ class POSController extends Controller
                 $saleItem->total = $item['quantity'] * $item['price'];
                 $saleItem->save();
 
-                // Update stock
+                // Update inventory stock
+                $inventory->removeStock($item['quantity']);
+
+                // Also update product total quantity for backward compatibility
                 $product->decrement('quantity', $item['quantity']);
             }
 
@@ -222,12 +273,16 @@ class POSController extends Controller
     }
 
     /**
-     * Get product details
+     * Get product details with location-aware stock
      */
     public function getProduct($id)
     {
+        $user = Auth::user();
+        $businessId = $user->business_id;
+        $userRole = $user->role->name;
+
         $product = Product::where('id', $id)
-            ->where('business_id', Auth::user()->business_id)
+            ->where('business_id', $businessId)
             ->where('is_active', true)
             ->with('category')
             ->first();
@@ -236,12 +291,22 @@ class POSController extends Controller
             return response()->json(['error' => 'Product not found'], 404);
         }
 
+        // Get inventory quantity for user's location or all locations
+        if ($userRole !== 'owner' && $user->location_id) {
+            $stock = Inventory::where('business_id', $businessId)
+                ->where('product_id', $id)
+                ->where('location_id', $user->location_id)
+                ->value('quantity') ?? 0;
+        } else {
+            $stock = $product->quantity; // Total stock
+        }
+
         return response()->json([
             'id' => $product->id,
             'name' => $product->name,
             'sku' => $product->sku,
             'price' => $product->selling_price,
-            'stock' => $product->quantity,
+            'stock' => $stock,
             'unit' => $product->unit ?? 'pcs',
             'category' => $product->category->name ?? 'Uncategorized',
             'image' => $product->image_url ?? null,
