@@ -134,10 +134,26 @@
                     </div>
                 </div>
 
-                <a href="{{ route('inventory.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800 transition-colors">
-                    <i class="fas fa-warehouse text-lg"></i>
-                    <span>Inventory</span>
-                </a>
+                <!-- INVENTORY SECTION (Accordion with dropdown) -->
+                <div class="accordion-group">
+                    <button type="button" class="accordion-toggle flex items-center justify-between w-full p-3 rounded-lg text-left bg-indigo-700 hover:bg-indigo-800 transition-colors font-semibold" data-accordion="inventory">
+                        <span class="flex items-center space-x-3">
+                            <i class="fas fa-warehouse text-lg"></i>
+                            <span>Inventory</span>
+                        </span>
+                        <i class="fas fa-chevron-down transition-transform duration-300"></i>
+                    </button>
+                    <div class="accordion-content inventory-content space-y-1 mt-2 max-h-96 overflow-hidden transition-all duration-300">
+                        <a href="{{ route('inventory.index') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800 transition-colors text-sm">
+                            <i class="fas fa-list text-xs"></i>
+                            <span>Stock Levels</span>
+                        </a>
+                        <a href="{{ route('inventory.overview') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800 transition-colors text-sm">
+                            <i class="fas fa-chart-line text-xs"></i>
+                            <span>Inventory Overview</span>
+                        </a>
+                    </div>
+                </div>
 
                 <a href="{{ route('locations.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800 transition-colors">
                     <i class="fas fa-map-marker-alt text-lg"></i>

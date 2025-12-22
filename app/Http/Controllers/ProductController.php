@@ -379,4 +379,295 @@ public function expiringSoon()
     return view('products.expiring-soon', compact('products'));
 }
 
+/**
+ * Show import products form
+ */
+public function showImport()
+{
+    $categories = Category::where('business_id', Auth::user()->business_id)
+        ->orderBy('name')
+        ->get();
+
+    return view('products.import', compact('categories'));
+}
+
+/**
+ * Handle product import from CSV/Excel
+ */
+public function import(Request $request)
+{
+    $request->validate([
+        'file' => 'required|file|mimes:csv,txt,xlsx,xls|max:5120', // 5MB max
+    ], [
+        'file.required' => 'Please select a file to import',
+        'file.mimes' => 'File must be CSV or Excel format',
+        'file.max' => 'File size must not exceed 5MB'
+    ]);
+
+    $businessId = Auth::user()->business_id;
+    $file = $request->file('file');
+    $fileContents = file_get_contents($file->path());
+
+    // Handle both CSV and Excel files
+    if (in_array($file->getClientOriginalExtension(), ['xlsx', 'xls'])) {
+        $products = $this->parseExcelFile($file);
+    } else {
+        $products = $this->parseCSVFile($fileContents);
+    }
+
+    if (empty($products)) {
+        return back()->withErrors(['file' => 'The file is empty or has an invalid format']);
+    }
+
+    $imported = 0;
+    $errors = [];
+    $row = 2; // Start from row 2 (after header)
+
+    foreach ($products as $productData) {
+        try {
+            // Validate required fields
+            if (empty($productData['name'])) {
+                $errors[] = "Row $row: Product name is required";
+                $row++;
+                continue;
+            }
+
+            if (empty($productData['sku'])) {
+                $errors[] = "Row $row: SKU is required";
+                $row++;
+                continue;
+            }
+
+            // Check if product already exists by SKU
+            $existingProduct = Product::where('business_id', $businessId)
+                ->where('sku', $productData['sku'])
+                ->first();
+
+            if ($existingProduct) {
+                $errors[] = "Row $row: Product with SKU '{$productData['sku']}' already exists";
+                $row++;
+                continue;
+            }
+
+            // Get or create category
+            $categoryId = null;
+            if (!empty($productData['category'])) {
+                $category = Category::firstOrCreate(
+                    ['business_id' => $businessId, 'name' => $productData['category']],
+                    ['description' => '']
+                );
+                $categoryId = $category->id;
+            }
+
+            // Create product
+            Product::create([
+                'business_id' => $businessId,
+                'category_id' => $categoryId,
+                'name' => $productData['name'],
+                'sku' => $productData['sku'],
+                'description' => $productData['description'] ?? '',
+                'cost_price' => (float)($productData['cost_price'] ?? 0),
+                'selling_price' => (float)($productData['selling_price'] ?? 0),
+                'quantity' => (int)($productData['quantity'] ?? 0),
+                'unit' => $productData['unit'] ?? 'pcs',
+                'barcode' => $productData['barcode'] ?? null,
+                'expiry_date' => !empty($productData['expiry_date']) ? date('Y-m-d', strtotime($productData['expiry_date'])) : null,
+                'is_active' => true
+            ]);
+
+            $imported++;
+        } catch (\Exception $e) {
+            $errors[] = "Row $row: Error importing product - " . $e->getMessage();
+        }
+
+        $row++;
+    }
+
+    if ($imported > 0) {
+        $message = "Successfully imported $imported product" . ($imported > 1 ? 's' : '');
+        if (!empty($errors)) {
+            $message .= '. ' . count($errors) . ' row(s) had errors';
+        }
+    } else {
+        $message = 'No products were imported';
+    }
+
+    return redirect()->route('products.index')
+        ->with('success', $message)
+        ->with('import_errors', $errors);
+}
+
+/**
+ * Parse CSV file and return products array
+ */
+private function parseCSVFile($fileContents)
+{
+    $lines = array_filter(array_map('str_getcsv', explode("\n", $fileContents)));
+    
+    if (empty($lines)) {
+        return [];
+    }
+
+    $header = array_shift($lines);
+    $products = [];
+
+    foreach ($lines as $line) {
+        if (count($line) < count($header)) {
+            $line = array_pad($line, count($header), '');
+        }
+
+        $product = array_combine($header, array_slice($line, 0, count($header)));
+        
+        // Clean keys (remove spaces and convert to lowercase)
+        $product = array_combine(
+            array_map(function($key) { return strtolower(trim($key)); }, array_keys($product)),
+            $product
+        );
+
+        if (!empty($product['name'])) {
+            $products[] = $product;
+        }
+    }
+
+    return $products;
+}
+
+/**
+ * Parse Excel file and return products array
+ */
+private function parseExcelFile($file)
+{
+    try {
+        $zip = new \ZipArchive();
+        
+        if ($zip->open($file->path()) !== true) {
+            return [];
+        }
+
+        // Read shared strings (text values)
+        $sharedStringsXml = $zip->getFromName('xl/sharedStrings.xml');
+        $sharedStrings = [];
+        
+        if ($sharedStringsXml !== false) {
+            $doc = new \DOMDocument();
+            $doc->loadXML($sharedStringsXml);
+            $stringElements = $doc->getElementsByTagName('si');
+            
+            foreach ($stringElements as $si) {
+                $tElements = $si->getElementsByTagName('t');
+                $value = '';
+                foreach ($tElements as $t) {
+                    $value .= $t->nodeValue;
+                }
+                $sharedStrings[] = $value;
+            }
+        }
+
+        // Read worksheet
+        $worksheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $zip->close();
+        
+        if ($worksheetXml === false) {
+            return [];
+        }
+
+        // Parse worksheet
+        $doc = new \DOMDocument();
+        $doc->loadXML($worksheetXml);
+        
+        $rows = $doc->getElementsByTagName('row');
+        $products = [];
+        $headerRow = null;
+        $rowIndex = 0;
+
+        foreach ($rows as $row) {
+            $cells = $row->getElementsByTagName('c');
+            $rowData = [];
+            $colIndex = 0;
+
+            foreach ($cells as $cell) {
+                $value = '';
+                $cellType = $cell->getAttribute('t');
+                
+                // Get the cell value
+                $cellValue = $cell->getElementsByTagName('v');
+                if ($cellValue->length > 0) {
+                    $value = $cellValue->item(0)->nodeValue;
+                    
+                    // If it's a shared string reference, get the actual string
+                    if ($cellType === 's') {
+                        $stringIndex = (int)$value;
+                        $value = isset($sharedStrings[$stringIndex]) ? $sharedStrings[$stringIndex] : '';
+                    }
+                }
+                
+                $rowData[$colIndex] = trim($value);
+                $colIndex++;
+            }
+
+            if ($rowIndex === 0) {
+                // First row is header
+                $headerRow = array_map(function($h) { 
+                    return strtolower(trim($h)); 
+                }, $rowData);
+            } else {
+                // Skip empty rows
+                if (!empty(array_filter($rowData))) {
+                    // Combine with header
+                    if ($headerRow) {
+                        $product = array_combine(
+                            $headerRow,
+                            array_pad($rowData, count($headerRow), '')
+                        );
+                        if (!empty($product['name'])) {
+                            $products[] = $product;
+                        }
+                    }
+                }
+            }
+
+            $rowIndex++;
+        }
+
+        return $products;
+    } catch (\Exception $e) {
+        return [];
+    }
+}
+
+/**
+ * Download import template
+ */
+public function downloadTemplate()
+{
+    $file = storage_path('app/templates/product-import-template.csv');
+    
+    // Create template if it doesn't exist
+    if (!file_exists($file)) {
+        @mkdir(dirname($file), 0755, true);
+        
+        $header = ['Name', 'SKU', 'Category', 'Description', 'Cost Price', 'Selling Price', 'Quantity', 'Unit', 'Barcode', 'Expiry Date'];
+        $fp = fopen($file, 'w');
+        fputcsv($fp, $header);
+        
+        // Add sample data
+        $sample = [
+            'Sample Product 1',
+            'SKU001',
+            'Electronics',
+            'Sample description',
+            '100.00',
+            '150.00',
+            '50',
+            'pcs',
+            '1234567890',
+            '2025-12-31'
+        ];
+        fputcsv($fp, $sample);
+        fclose($fp);
+    }
+
+    return response()->download($file, 'product-import-template.csv');
+}
+
 }

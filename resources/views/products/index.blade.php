@@ -16,6 +16,10 @@
             <p class="text-gray-600 text-sm mt-1">Manage your product inventory</p>
         </div>
         <div class="flex space-x-2">
+            <a href="{{ route('products.import.show') }}" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center">
+                <i class="fas fa-file-import mr-2"></i>
+                Import Products
+            </a>
             <a href="{{ route('products.create') }}" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center">
                 <i class="fas fa-plus mr-2"></i>
                 Add Product
