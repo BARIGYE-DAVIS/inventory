@@ -93,6 +93,7 @@
                     <tr>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Staff Member</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
                         <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sales (This Month)</th>
                         <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Revenue (This Month)</th>
@@ -125,6 +126,17 @@
                                        ($member->role->name === 'cashier' ? 'fa-cash-register' : 'fa-user')) }} mr-1"></i>
                                 {{ $member->role->display_name }}
                             </span>
+                        </td>
+                        <td class="px-4 py-3">
+                            @if($member->location)
+                                <span class="px-3 py-1 text-xs font-semibold bg-indigo-100 text-indigo-800 rounded-full">
+                                    <i class="fas fa-map-marker-alt mr-1"></i>{{ $member->location->name }}
+                                </span>
+                            @else
+                                <span class="px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-600 rounded-full">
+                                    <i class="fas fa-globe mr-1"></i>All Locations
+                                </span>
+                            @endif
                         </td>
                         <td class="px-4 py-3">
                             <p class="text-sm text-gray-600">
