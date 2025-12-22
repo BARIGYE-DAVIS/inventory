@@ -14,6 +14,7 @@ use App\Http\Controllers\{
     SaleController, 
     PurchaseController,
     InventoryController,
+    LocationController,
     SupplierController,
     CustomerController,
     ReportController,
@@ -148,6 +149,11 @@ Route::middleware(['auth'])->group(function () {
     // INVENTORY (Role checked in controller)
     // ========================================
     Route::resource('inventory', InventoryController::class);
+
+    // ========================================
+    // LOCATIONS / BRANCHES (Role checked in controller)
+    // ========================================
+    Route::resource('locations', LocationController::class);
 
     // ========================================
     // SUPPLIERS (Role checked in controller)

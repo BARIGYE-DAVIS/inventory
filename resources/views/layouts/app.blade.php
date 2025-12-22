@@ -139,6 +139,11 @@
                     <span>Inventory</span>
                 </a>
 
+                <a href="{{ route('locations.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800 transition-colors">
+                    <i class="fas fa-map-marker-alt text-lg"></i>
+                    <span>Locations / Branches</span>
+                </a>
+
                 <a href="{{ route('suppliers.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800 transition-colors">
                     <i class="fas fa-truck text-lg"></i>
                     <span>Suppliers</span>
