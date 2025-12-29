@@ -52,16 +52,20 @@
                 </a>
 
 
-                              <a href="{{ route('profit.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-700">
-    <i class="fas fa-chart-pie text-lg"></i>
-    <span>Profit Report</span>
-</a>
+             <a href="{{ route('profit.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-700">
+            <i class="fas fa-chart-pie text-lg"></i>
+         <span>Profit Report</span>
+        </a>
+      
 
                 <a href="{{ route('pos.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800">
                     <i class="fas fa-cash-register text-lg text-green-400"></i>
                     <span>POS - New Sale</span>
                 </a>
-        
+             <a href="{{route('invoices.index')}}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800">
+                    <i class="fas fa-file-invoice-dollar text-lg"></i>
+                    <span>Invoices/credit sales</span>
+            </a>
                 <!-- Products -->
                 <div class="space-y-1">
                     <div class="flex items-center space-x-3 p-3 text-indigo-300 font-semibold">

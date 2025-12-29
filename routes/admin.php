@@ -32,4 +32,5 @@ Route:: prefix('admin')->name('admin.')->group(function () {
     Route::patch('/users/{user}/toggle', [AdminController::class, 'toggleUserActive'])->name('users.toggle');
     Route::patch('/users/{user}/email', [AdminController::class, 'updateUserEmail'])->name('users.email.update');
     Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
+    Route::patch('/users/{user}', [AdminController::class, 'updateUser'])->name('users.update');
 });

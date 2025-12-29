@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Business;
 use App\Models\Admin;
 use App\Models\User;
+use App\Models\Role; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -91,7 +94,8 @@ class AdminController extends Controller
 
         $authAdmin = Auth::guard('admin')->user();
         if ($authAdmin) {
-            $authAdmin->update(['last_login_at' => now()]);
+            $authAdmin->last_login_at = now();
+            $authAdmin->save();
         }
 
         return redirect()->route('admin.auth.twofactor.show')
@@ -128,44 +132,142 @@ class AdminController extends Controller
 
         $admin = Auth::guard('admin')->user();
         
+        // ========================================
+        // 1. QUICK STATS
+        // ========================================
         $stats = [
             'total_users' => User::count(),
-            'active_users' => User::where('is_active', true)->count(),
+            'active_users' => User:: where('is_active', true)->count(),
             'inactive_users' => User::where('is_active', false)->count(),
+            'total_businesses' => Business:: count(),
+            'total_admins' => Admin::count(),
+            'admins_active' => Admin::where('is_active', true)->count(),
         ];
 
-        return view('admin.dashboard', compact('admin', 'stats'));
+        // ========================================
+        // 2. USERS GROWTH (Last 30 days)
+        // ========================================
+        $usersGrowth = User::selectRaw('DATE(created_at) as date, COUNT(*) as count')
+            ->where('created_at', '>=', now()->subDays(30))
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        // ========================================
+        // 3. USER DISTRIBUTION BY ROLE
+        // ========================================
+        $usersByRole = User::with('role')
+            ->select('role_id', DB::raw('COUNT(*) as count'))
+            ->groupBy('role_id')
+            ->get()
+            ->map(function($item) {
+                return [
+                    'role' => $item->role?->name ?? 'No Role',
+                    'count' => $item->count,
+                ];
+            });
+
+        // ========================================
+        // 4. BUSINESS STATUS DISTRIBUTION
+        // ========================================
+        $businessStatus = Business::selectRaw('is_active, COUNT(*) as count')
+            ->groupBy('is_active')
+            ->get()
+            ->map(function($item) {
+                return [
+                    'status' => $item->is_active ? 'Active' : 'Inactive',
+                    'count' => $item->count,
+                ];
+            });
+
+        // ========================================
+        // 5. RECENT USERS (Last 5)
+        // ========================================
+        $recentUsers = User::with('role')
+            ->latest()
+            ->take(5)
+            ->get();
+
+        // ========================================
+        // 6. RECENT BUSINESSES (Last 5)
+        // ========================================
+        $recentBusinesses = Business::with('owner')
+            ->latest()
+            ->take(5)
+            ->get();
+
+        // ========================================
+        // 7. ADMIN ACTIVITY
+        // ========================================
+        $adminActivity = Admin::where('is_active', true)
+            ->orderBy('last_login_at', 'desc')
+            ->take(5)
+            ->get();
+
+        // ========================================
+        // 8. 2FA ENABLED STATS
+        // ========================================
+        $twoFactorStats = [
+            'users_2fa_enabled' => User::where('two_factor_enabled', true)->count(),
+            'admins_2fa_enabled' => Admin::where('two_factor_enabled', true)->count(),
+        ];
+
+        return view('admin.dashboard', compact(
+            'admin',
+            'stats',
+            'usersGrowth',
+            'usersByRole',
+            'businessStatus',
+            'recentUsers',
+            'recentBusinesses',
+            'adminActivity',
+            'twoFactorStats'
+        ));
     }
 
     // ========================================
     // USERS MANAGEMENT (Protected)
+
     // ========================================
-    public function users(Request $request)
-    {
-        // ✅ PROTECT THIS ROUTE
-        if (!Auth:: guard('admin')->check()) {
-            return redirect()->route('admin.login');
-        }
-        if (session('two_factor_verified') !== true) {
-            return redirect()->route('admin.auth.twofactor.show');
-        }
 
-        $query = User::query();
-
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-        }
-
-        if ($request->filled('status')) {
-            $query->where('is_active', $request->status === 'active');
-        }
-
-        $users = $query->latest()->paginate(20);
-
-        return view('admin. users. index', compact('users'));
+    // ========================================
+// USERS MANAGEMENT (Protected)
+// ========================================
+public function users(Request $request)
+{
+    // ✅ PROTECT THIS ROUTE
+    if (! Auth::guard('admin')->check()) {
+        return redirect()->route('admin.login');
     }
+    if (session('two_factor_verified') !== true) {
+        return redirect()->route('admin.auth.twofactor.show');
+    }
+
+    $query = User::with('role');
+
+    // Search filter
+    if ($request->filled('search')) {
+        $search = $request->search;
+        $query->where('name', 'like', "%{$search}%")
+              ->orWhere('email', 'like', "%{$search}%");
+    }
+
+    // Status filter
+    if ($request->filled('status')) {
+        $query->where('is_active', $request->status === 'active');
+    }
+
+    // Role filter
+    if ($request->filled('role')) {
+        $query->where('role_id', $request->role);
+    }
+
+    $users = $query->latest()->paginate(20);
+    $roles = Role::all();
+
+    return view('admin.users.index', compact('users', 'roles'));
+}
+   
 
     public function toggleUserActive(User $user)
     {
@@ -219,6 +321,43 @@ class AdminController extends Controller
         return view('admin.profile.edit', compact('admin'));
     }
 
+    // ========================================
+// UPDATE USER (For Edit Modal)
+// ========================================
+public function updateUser(Request $request, User $user)
+{
+    // ✅ PROTECT THIS ROUTE
+    if (! Auth::guard('admin')->check()) {
+        return response()->json(['error' => 'Unauthorized'], 401);
+    }
+    if (session('two_factor_verified') !== true) {
+        return response()->json(['error' => 'Verification required'], 401);
+    }
+
+    $data = $request->validate([
+        'name' => ['required', 'string', 'max:255'],
+        'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
+        'role_id' => ['required', 'exists:roles,id'],
+        'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+    ]);
+
+    $user->name = $data['name'];
+    $user->email = $data['email'];
+    $user->role_id = $data['role_id'];
+
+    if (! empty($data['password'])) {
+        $user->password = Hash:: make($data['password']);
+    }
+
+    $user->save();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'User updated successfully.',
+        'user' => $user
+    ]);
+}
+
     public function updateProfile(Request $request)
     {
         // ✅ PROTECT THIS ROUTE
@@ -228,7 +367,9 @@ class AdminController extends Controller
         if (session('two_factor_verified') !== true) {
             return redirect()->route('admin.auth.twofactor.show');
         }
-
+    // ✅ LOAD BOTH role AND business
+     $query = User::with(['role', 'business']);
+     
         $admin = Auth::guard('admin')->user();
 
         $data = $request->validate([

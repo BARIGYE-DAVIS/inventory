@@ -2,15 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Admin Panel</title>
+  <title>@yield('title', 'Admin Panel')</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#0f172a">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  @vite(['resources/css/app.css', 'resources/js/app.js'])
   <style>
     :root{
-      --bg: #f8fafc;
-      --panel: #ffffff;
-      --text: #0f172a;
+      --bg:  #f8fafc;
+      --panel:  #ffffff;
+      --text:  #0f172a;
       --muted: #475569;
       --border: #e2e8f0;
       --primary: #4f46e5;
@@ -18,27 +22,35 @@
       --overlay: rgba(15,23,42,0.45);
       --link: #0ea5e9;
       --link-hover: #0284c7;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --info: #3b82f6;
     }
     @media (prefers-color-scheme: dark){
       :root{
         --bg: #0b1220;
         --panel: #0f172a;
-        --text: #e2e8f0;
+        --text:  #e2e8f0;
         --muted: #94a3b8;
         --border: #1f2a44;
         --primary: #6366f1;
         --primary-600: #818cf8;
-        --overlay: rgba(2,6,23,0.65);
+        --overlay:  rgba(2,6,23,0.65);
         --link: #38bdf8;
         --link-hover: #7dd3fc;
+        --success: #34d399;
+        --warning:  #fbbf24;
+        --danger:  #f87171;
+        --info: #60a5fa;
       }
     }
-    *{box-sizing:border-box}
+    *{box-sizing: border-box}
     html,body{height:100%}
     body{
       margin:0;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, "Apple Color Emoji","Segoe UI Emoji";
-      background:var(--bg);
+      background: var(--bg);
       color:var(--text);
       line-height:1.5;
     }
@@ -47,7 +59,7 @@
     .app{
       min-height:100%;
       display:grid;
-      grid-template-columns: 1fr;
+      grid-template-columns:  1fr;
     }
 
     /* Topbar */
@@ -56,15 +68,16 @@
       top:0;
       z-index:50;
       background:var(--panel);
-      border-bottom:1px solid var(--border);
-      height:56px;
+      border-bottom: 1px solid var(--border);
+      height:64px;
       display:flex;
       align-items:center;
       justify-content:space-between;
-      padding:0 12px;
+      padding:0 20px;
+      box-shadow:  0 1px 3px rgba(0,0,0,0.1);
     }
     .top-actions{
-      display:flex; align-items:center; gap:8px;
+      display:flex; align-items:center; gap:16px;
     }
     .menu-btn{
       appearance:none;
@@ -72,86 +85,128 @@
       background:transparent;
       color:inherit;
       border-radius:8px;
-      height:32px;
-      padding:0 10px;
+      height:40px;
+      padding:0 12px;
       display:inline-flex;
       align-items:center;
       gap:8px;
       cursor:pointer;
+      transition:  all 0.2s ease;
+    }
+    .menu-btn:hover{
+      background:rgba(79,70,229,0.08);
+      border-color:var(--primary);
     }
     .menu-icon{
-      width:18px; height:18px; display:inline-block; position:relative;
+      width:20px; height:20px; display:inline-block; position:relative;
     }
     .menu-icon::before,
     .menu-icon::after,
     .menu-icon span{
       content:""; position:absolute; left:0; right:0; height:2px; background:currentColor; border-radius:2px;
     }
-    .menu-icon::before{ top:3px; }
-    .menu-icon span{ top:8px; }
-    .menu-icon::after{ top:13px; }
+    .menu-icon::before{ top: 4px; }
+    .menu-icon span{ top: 9px; }
+    .menu-icon::after{ top:14px; }
+
+    .topbar-title{
+      font-weight:700;
+      font-size:18px;
+      letter-spacing:-0.01em;
+    }
+
+    .topbar-user{
+      display:flex; align-items:center; gap:8px; font-size:14px;
+    }
 
     /* Sidebar */
     .sidebar{
       position:fixed;
-      inset:56px auto 0 0; /* below topbar, left aligned */
-      width:270px;
+      inset:64px auto 0 0;
+      width:280px;
       background:var(--panel);
       border-right:1px solid var(--border);
       transform:translateX(-100%);
       transition:transform .22s ease;
       z-index:60;
       display:flex; flex-direction:column;
+      box-shadow: 1px 0 3px rgba(0,0,0,0.1);
     }
     .sidebar.open{ transform:translateX(0); }
     .sidebar-header{
-      padding:14px 12px;
+      padding:18px 16px;
       border-bottom:1px solid var(--border);
       font-weight:700;
       letter-spacing:-0.01em;
+      font-size:16px;
     }
     .nav{
-      padding:10px;
-      display:flex; flex-direction:column; gap:6px;
-      overflow:auto;
+      padding:12px;
+      display:flex; flex-direction:column; gap:8px;
+      overflow: auto;
+      flex: 1;
     }
     .nav a{
-      display:flex; align-items:center; gap:10px;
-      padding:10px 10px;
-      border-radius:10px;
+      display:flex; align-items:center; gap:12px;
+      padding:12px 14px;
+      border-radius: 10px;
       color:var(--text);
       text-decoration:none;
       border:1px solid transparent;
+      transition:  all 0.2s ease;
+      font-size:15px;
     }
     .nav a:hover{
-      background:rgba(2,6,23,0.03);
-      border-color:var(--border);
+      background:rgba(79,70,229,0.06);
+      border-color:rgba(79,70,229,0.2);
+      color:var(--primary);
     }
     .nav a.active{
-      background:rgba(79,70,229,0.08);
-      border-color:rgba(79,70,229,0.30);
+      background:rgba(79,70,229,0.12);
+      border-color:var(--primary);
       color:var(--primary-600);
       font-weight:600;
     }
+    .nav i{
+      width:20px;
+      text-align:center;
+      font-size:16px;
+    }
     .nav .section-title{
-      margin:12px 10px 6px;
-      font-size:12px;
+      margin: 14px 14px 8px;
+      font-size: 11px;
       color:var(--muted);
-      text-transform:uppercase; letter-spacing:.06em;
+      text-transform:uppercase; letter-spacing:.08em;
+      font-weight:700;
     }
     .sidebar-footer{
       margin-top:auto;
-      padding:10px;
+      padding:12px;
       border-top:1px solid var(--border);
     }
     .logout-btn{
-      width:100%; border:1px solid var(--border); background:transparent; color:inherit;
-      border-radius:10px; height:36px; cursor:pointer;
+      width:100%;
+      border:1px solid var(--border);
+      background:transparent;
+      color:var(--danger);
+      border-radius:10px;
+      height:40px;
+      cursor:pointer;
+      transition: all 0.2s ease;
+      font-weight:600;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+    }
+    .logout-btn:hover{
+      background:rgba(239,68,68,0.1);
+      border-color:var(--danger);
     }
 
     /* Overlay */
     .overlay{
-      position:fixed; inset:56px 0 0 0;
+      position:fixed; inset:64px 0 0 0;
       background:var(--overlay);
       opacity:0; pointer-events:none;
       transition:opacity .18s ease;
@@ -161,35 +216,85 @@
 
     /* Main content */
     .main{
-      max-width:1200px;
+      max-width:1400px;
       margin:0 auto;
-      padding:16px;
+      padding:24px;
+    }
+
+    /* Alert Messages */
+    .alert{
+      display:flex;
+      align-items:flex-start;
+      gap:12px;
+      padding:14px 16px;
+      border-radius:10px;
+      margin-bottom: 16px;
+      border:1px solid;
+      animation:  slideIn 0.3s ease;
+    }
+    @keyframes slideIn{
+      from{ opacity:0; transform:translateY(-10px); }
+      to{ opacity:1; transform:translateY(0); }
+    }
+    .alert-success{
+      background:rgba(16,185,129,0.08);
+      border-color:rgba(16,185,129,0.3);
+      color:var(--success);
+    }
+    .alert-danger{
+      background:rgba(239,68,68,0.08);
+      border-color:rgba(239,68,68,0.3);
+      color:var(--danger);
+    }
+    .alert i{
+      font-size:18px;
+      flex-shrink:0;
+    }
+    .alert-close{
+      margin-left:auto;
+      background:none;
+      border:none;
+      color:inherit;
+      cursor:pointer;
+      font-size:16px;
+      opacity:0.6;
+      transition:opacity 0.2s;
+    }
+    .alert-close:hover{
+      opacity: 1;
     }
 
     /* Desktop enhancements */
-    @media (min-width: 1024px){
+    @media (min-width:  1024px){
       .sidebar{
         position:sticky;
-        top:56px; inset:auto; height:calc(100vh - 56px);
+        top:64px; inset:auto; height:calc(100vh - 64px);
         transform:none;
       }
       .overlay{ display:none; }
       .layout{
-        display:grid; grid-template-columns:270px 1fr;
+        display:grid; grid-template-columns:280px 1fr;
         align-items:start;
       }
-      .main{ padding:20px; }
+      .main{ padding:28px; }
       .topbar .menu-btn{ display:none; }
     }
 
     /* Utilities */
     .card{
-      background:var(--panel); border:1px solid var(--border); border-radius:12px;
-      padding:16px; box-shadow:0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:20px;
+      box-shadow:0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
+      transition: all 0.2s ease;
+    }
+    .card:hover{
+      box-shadow:0 2px 4px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.1);
     }
     .muted{ color:var(--muted); }
-    .link{ color:var(--link); text-decoration:none; }
-    .link:hover{ color:var(--link-hover); }
+    .link{ color:var(--link); text-decoration:none; cursor:pointer; }
+    .link:hover{ color:var(--link-hover); text-decoration:underline; }
   </style>
 </head>
 <body>
@@ -201,10 +306,13 @@
           <span class="menu-icon"><span></span></span>
           Menu
         </button>
+        <span class="topbar-title">Admin Panel</span>
       </div>
-      <div style="font-weight:600">Admin Panel</div>
       <div class="top-actions">
-        <a href="#" class="link">Profile</a>
+        <span class="topbar-user">
+          <i class="fas fa-user-circle" style="font-size: 24px; color:var(--primary);"></i>
+          {{ Auth::guard('admin')->user()->name }}
+        </span>
       </div>
     </header>
 
@@ -212,41 +320,49 @@
     <div class="layout">
       <!-- Sidebar -->
       <aside id="adminSidebar" class="sidebar" role="navigation" aria-label="Sidebar">
-        <div class="sidebar-header">Navigation</div>
+        <div class="sidebar-header">
+          <i class="fas fa-compass" style="margin-right:8px;"></i> Navigation
+        </div>
         <nav class="nav">
-          <a href="#" class="active">
-            <span aria-hidden="true">📊</span>
+          <a href="{{ route('admin.dashboard') }}" class="@if(Route::currentRouteName() == 'admin.dashboard') active @endif">
+            <i class="fas fa-chart-line"></i>
             <span>Dashboard</span>
           </a>
-          <a href="#">
-            <span aria-hidden="true">👥</span>
+          <a href="{{ route('admin.users.index') }}" class="@if(Route::currentRouteName() == 'admin.users.index') active @endif">
+            <i class="fas fa-users"></i>
             <span>Users</span>
           </a>
-          <a href="#">
-            <span aria-hidden="true">🧾</span>
-            <span>Plans</span>
+          <a href="#" >
+            <i class="fas fa-building"></i>
+            <span>Businesses</span>
           </a>
           <a href="#">
-            <span aria-hidden="true">🔧</span>
+            <i class="fas fa-cog"></i>
             <span>Settings</span>
           </a>
 
           <div class="section-title">Management</div>
           <a href="#">
-            <span aria-hidden="true">✉️</span>
+            <i class="fas fa-envelope"></i>
             <span>Email Tools</span>
           </a>
           <a href="#">
-            <span aria-hidden="true">🛡️</span>
+            <i class="fas fa-shield-alt"></i>
             <span>Security</span>
           </a>
           <a href="#">
-            <span aria-hidden="true">📈</span>
+            <i class="fas fa-chart-bar"></i>
             <span>Reports</span>
           </a>
         </nav>
         <div class="sidebar-footer">
-          <button class="logout-btn">Logout</button>
+          <form method="POST" action="{{ route('admin.logout') }}" style="width:100%;">
+            @csrf
+            <button type="submit" class="logout-btn">
+              <i class="fas fa-sign-out-alt"></i>
+              Logout
+            </button>
+          </form>
         </div>
       </aside>
 
@@ -256,13 +372,25 @@
       <!-- Main Content -->
       <main class="main" role="main">
         @if(session('success'))
-          <div class="card" style="margin-bottom:12px;">
-            <strong>Success:</strong> {{ session('success') }}
+          <div class="alert alert-success">
+            <i class="fas fa-check-circle"></i>
+            <div style="flex: 1;">
+              <strong>Success! </strong> {{ session('success') }}
+            </div>
+            <button class="alert-close" onclick="this.parentElement.style.display='none';">
+              <i class="fas fa-times"></i>
+            </button>
           </div>
         @endif
-        @if($errors->any())
-          <div class="card" style="margin-bottom:12px;">
-            <strong>Error:</strong> {{ $errors->first() }}
+        @if(session('error'))
+          <div class="alert alert-danger">
+            <i class="fas fa-exclamation-circle"></i>
+            <div style="flex:1;">
+              <strong>Error!</strong> {{ session('error') }}
+            </div>
+            <button class="alert-close" onclick="this. parentElement.style.display='none';">
+              <i class="fas fa-times"></i>
+            </button>
           </div>
         @endif
 
@@ -280,9 +408,8 @@
 
       function openSidebar(){
         sidebar.classList.add('open');
-        overlay.classList.add('show');
+        overlay.classList. add('show');
         toggle.setAttribute('aria-expanded', 'true');
-        // prevent background scroll on small screens
         if (window.innerWidth < 1024) document.body.style.overflow = 'hidden';
       }
       function closeSidebar(){
@@ -295,41 +422,32 @@
         if (sidebar.classList.contains('open')) closeSidebar(); else openSidebar();
       }
 
-      // Toggle button
       toggle.addEventListener('click', toggleSidebar);
-
-      // Close when clicking overlay
       overlay.addEventListener('click', closeSidebar);
 
-      // Close on ESC
       window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeSidebar();
       });
 
-      // Auto-close on small screens after navigation
       sidebar.addEventListener('click', (e) => {
-        const target = e.target.closest('a,button');
-        if (!target) return;
-        // Only auto-close for links/buttons and for small screens
+        const target = e.target. closest('a,button');
+        if (! target) return;
         if (window.innerWidth < 1024) closeSidebar();
       });
 
-      // Ensure sidebar is visible on desktop and closed on load for mobile
       function syncOnResize(){
         if (window.innerWidth >= 1024){
-          // desktop: keep sidebar open, remove overlay
           sidebar.classList.add('open');
           overlay.classList.remove('show');
           document.body.style.overflow = '';
           toggle.setAttribute('aria-expanded', 'true');
         } else {
-          // mobile/tablet: closed by default
           sidebar.classList.remove('open');
           overlay.classList.remove('show');
           toggle.setAttribute('aria-expanded', 'false');
         }
       }
-      window.addEventListener('resize', syncOnResize);
+      window. addEventListener('resize', syncOnResize);
       syncOnResize();
     })();
   </script>

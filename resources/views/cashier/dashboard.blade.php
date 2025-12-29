@@ -66,7 +66,17 @@
                     <i class="fas fa-plus-circle text-2xl"></i>
                     <span>NEW SALE</span>
                 </a>
+            <!-- ... existing sidebar code ... -->
 
+<li>
+    <a href="{{ route('cashier.invoices.index') }}"
+       class="flex items-center px-4 py-2 text-gray-700 rounded-md hover:bg-indigo-600 hover:text-white transition group {{ request()->routeIs('cashier.invoices.*') ? 'bg-indigo-100 text-indigo-700 font-bold' : '' }}">
+        <i class="fas fa-file-invoice-dollar text-indigo-500 group-hover:text-white w-5"></i>
+        <span class="ml-3">Invoices</span>
+    </a>
+</li>
+
+<!-- ... further sidebar code ... -->
                 <!-- My Sales -->
                 <div class="space-y-1">
                     <div class="flex items-center space-x-3 p-3 text-yellow-200 font-semibold">
