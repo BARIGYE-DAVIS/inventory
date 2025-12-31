@@ -66,6 +66,12 @@
                     <i class="fas fa-file-invoice-dollar text-lg"></i>
                     <span>Invoices/credit sales</span>
             </a>
+  <a href="{{ route('invoices.customersWithInvoices') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800">
+    <i class="fas fa-building text-lg"></i>
+    <span>Creditors</span>
+</a>
+
+
                 <!-- Products -->
                 <div class="space-y-1">
                     <div class="flex items-center space-x-3 p-3 text-indigo-300 font-semibold">

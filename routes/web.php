@@ -6,6 +6,7 @@ use App\Http\Controllers\{
     DashboardController,
     Admin\AdminController,
     CashierDashboardController,
+    InvoiceController,
     CashierPerformanceController,
     ProfileController,
     StaffController,
@@ -325,5 +326,24 @@ Route::prefix('invoices')->name('invoices.')->group(function () {
 Route::post('/invoices/pos', [\App\Http\Controllers\InvoiceController::class, 'posInvoice'])->name('invoices.pos');
 // Cashier: Store/submit a new "credit" (invoice) sale from POS
 Route::post('/cashier/pos/invoice', [CashierInvoiceController::class, 'posInvoice'])->name('cashier.posInvoice');
+
+// Show the payment form for a specific invoice (GET)
+Route::get('/invoices/{id}/pay', [InvoiceController::class, 'payForm'])->name('invoices.payForm');
+
+// Process/post the payment for a specific invoice (POST)
+Route::post('/invoices/{id}/pay', [InvoiceController::class, 'pay'])->name('invoices.pay');
+
+
+Route::get('invoices/customer/{customer}', [InvoiceController::class, 'customerFinancialSummary']) ->name('invoices.customerSummary');
+    
+Route::get('/invoices/customers', [InvoiceController::class, 'customersWithInvoices']) ->name('invoices.customersWithInvoices');
+   
+Route::get('/test-invoice-customers', function () {
+    return view('invoices.customers');
+});
+
+Route::get('/invoices/creditors', [InvoiceController::class, 'creditors'])  ->name('invoices.creditors');
+  
+
 // Include admin routes
 require __DIR__ . '/admin.php';

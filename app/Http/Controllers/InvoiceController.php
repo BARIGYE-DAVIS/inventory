@@ -381,58 +381,93 @@ class InvoiceController extends Controller
         return back()->with('success', 'Invoice item deleted!');
     }
 
-    // MARK INVOICE AS PAID (with automatic sale)
- public function markPaid($id, Request $request)
+  public function payForm($id)
 {
-    $invoice = Invoice::with(['items', 'business', 'customer', 'user'])->findOrFail($id);
-    $paymentAmount = $request->input('amount', $invoice->total);
+    $invoice = \App\Models\Invoice::with(['customer', 'business', 'items'])->findOrFail($id);
+    return view('invoices.pay', compact('invoice'));
+}
 
-    if ($invoice->status === 'paid') {
-        return back()->with('info', 'Invoice already settled.');
-    }
 
-    // Update payment information
-    $invoice->paid = $paymentAmount >= $invoice->total ? $invoice->total : $paymentAmount;
-    $invoice->status = ($invoice->paid >= $invoice->total) ? 'paid' : 'partial';
+
+public function pay(Request $request, $id)
+{
+    $invoice = Invoice::findOrFail($id);
+    $maxOutstanding = $invoice->total - $invoice->paid;
+
+    $input = $request->validate([
+        'payment_type'  => 'required|in:full,partial',
+        'amount'        => 'required|numeric|min:1|max:' . $maxOutstanding,
+    ]);
+
+    $amountToPay = $input['payment_type'] === 'full' ? $maxOutstanding : $input['amount'];
+
+    // 1. Record the payment
+    DB::table('payments')->insert([
+        'invoice_id'  => $invoice->id,
+        'amount_paid' => $amountToPay,
+        'paid_at'     => now(),
+        'user_id'     => auth::id(),
+        'created_at'  => now(),
+        'updated_at'  => now(),
+    ]);
+
+    // 2. Recalculate summary fields
+    $newPaid = DB::table('payments')
+        ->where('invoice_id', $invoice->id)
+        ->sum('amount_paid');
+
+    $newBalance = $invoice->total - $newPaid;
+    $newStatus = ($newPaid >= $invoice->total) ? 'paid' : 'partial';
+
+    // 3. Update invoice
+    $invoice->paid = $newPaid;
+    $invoice->balance = $newBalance;
+    $invoice->status = $newStatus;
     $invoice->save();
 
-    // CREATE SALE ONLY when fully paid
-    if ($invoice->status === 'paid') {
-        $sale = Sale::create([
-            'business_id'     => $invoice->business_id,
-            'user_id'         => $invoice->user_id,
-            'customer_id'     => $invoice->customer_id,
-            'sale_number'     => 'SALE-' . now()->format('Ymd') . '-' . rand(1000, 9999),
-            'sale_date'       => now(),
-            'subtotal'        => $invoice->subtotal,
-            'tax_amount'      => $invoice->tax_amount,
-            'discount_amount' => $invoice->discount_amount,
-            'total'           => $invoice->total,
-            'payment_status'  => 'paid',
-            'payment_method'  => 'credit',
-            'notes'           => 'From invoice ' . $invoice->invoice_number,
-        ]);
-        foreach ($invoice->items as $item) {
-            SaleItem::create([
-                'sale_id'    => $sale->id,
-                'product_id' => $item->product_id,
-                'quantity'   => $item->quantity,
-                'unit_price' => $item->unit_price,
-                'total'      => $item->total,
-            ]);
-        }
+    // ========== ADDED CODE: fetch the latest payment for this invoice ==========
+    $latestPayment = DB::table('payments')
+        ->where('invoice_id', $invoice->id)
+        ->orderByDesc('paid_at')
+        ->first(); // <<< IMPORTANT: returns stdClass with amount_paid!
+    // ===========================================================================
 
-        // SEND THE PAID RECEIPT TO CUSTOMER
-        try {
-            if ($invoice->customer && $invoice->customer->email) {
-                \App\Services\MailerService::sendInvoiceReceipt($invoice);
-            }
-        } catch (\Exception $e) {
-            // Optionally log error: do not break flow!
-            // \Log::warning('Failed to send paid receipt: '.$e->getMessage());
+    // ========== CHANGED CODE: pass latestPayment to MailerService ==============
+    try {
+        if ($invoice->customer && $invoice->customer->email) {
+            \App\Services\MailerService::sendInvoiceReceipt($invoice, $latestPayment); // <<<
         }
+    } catch (\Exception $e) {
+        // Log or handle error if you want
     }
+    // ===========================================================================
 
-    return back()->with('success', 'Invoice payment updated & receipt sent!');
+    return redirect()->route('invoices.show', $invoice->id)
+        ->with('success', 'Payment of ' . number_format($amountToPay) . ' UGX recorded and receipt sent!');
 }
+
+
+public function customerFinancialSummary($customerId)
+     {
+    $customer = \App\Models\Customer::with(['invoices.payments'])->findOrFail($customerId);
+
+    // Outstanding invoices (not paid)
+    $outstandingInvoices = $customer->invoices()->where('status', '!=', 'paid')->get();
+    // Cleared invoices (paid)
+    $paidInvoices = $customer->invoices()->where('status', 'paid')->get();
+    // All payments by this customer
+    $payments = \App\Models\Payment::whereIn('invoice_id', $customer->invoices->pluck('id'))->orderBy('paid_at', 'desc')->get();
+
+    return view('invoices.customer', compact('customer', 'outstandingInvoices', 'paidInvoices', 'payments'));
 }
+
+public function customersWithInvoices()
+{
+    // Get only customers who have invoices
+   // $customers = \App\Models\Customer::whereHas('invoices')->get();
+
+    return view('invoices.customers', compact('customers'));
+}
+
+}
+
