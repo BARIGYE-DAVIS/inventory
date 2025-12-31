@@ -15,6 +15,7 @@ use App\Http\Controllers\{
     SaleController, 
     PurchaseController,
     InventoryController,
+    LocationController,
     SupplierController,
     CustomerController,
     ReportController,
@@ -127,6 +128,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [ProductController::class, 'index'])->name('index');
         Route::get('/create', [ProductController::class, 'create'])->name('create');
         Route::post('/', [ProductController::class, 'store'])->name('store');
+        Route::get('/import', [ProductController::class, 'showImport'])->name('import.show');
+        Route::post('/import', [ProductController::class, 'import'])->name('import');
+        Route::get('/import/download-template', [ProductController::class, 'downloadTemplate'])->name('import.template');
         Route::get('/expired', [ProductController::class, 'expired'])->name('expired');
         Route::get('/expiring-soon', [ProductController::class, 'expiringSoon'])->name('expiring-soon');
         Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('edit');
@@ -149,6 +153,12 @@ Route::middleware(['auth'])->group(function () {
     // INVENTORY (Role checked in controller)
     // ========================================
     Route::resource('inventory', InventoryController::class);
+    Route::get('/inventory-overview', [InventoryController::class, 'overview'])->name('inventory.overview');
+
+    // ========================================
+    // LOCATIONS / BRANCHES (Role checked in controller)
+    // ========================================
+    Route::resource('locations', LocationController::class);
 
     // ========================================
     // SUPPLIERS (Role checked in controller)

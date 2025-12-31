@@ -455,18 +455,6 @@ class Product extends Model
     }
 
     /**
-     * Get image URL
-     */
-    public function getImageUrlAttribute(): string
-    {
-        if ($this->image) {
-            return asset('storage/' . $this->image);
-        }
-
-        return asset('images/no-product-image.png');
-    }
-
-    /**
      * Get display name with SKU
      */
     public function getDisplayNameAttribute(): string

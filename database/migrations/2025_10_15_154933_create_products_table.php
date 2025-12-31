@@ -20,7 +20,6 @@ return new class extends Migration
             $table->decimal('selling_price', 15, 2)->default(0);
             $table->integer('reorder_level')->default(0);
             $table->string('barcode', 100)->nullable();
-            $table->string('image')->nullable();
             
             // ✅ NEW: Expiry date fields
             $table->date('manufacture_date')->nullable()->comment('Manufacturing date');

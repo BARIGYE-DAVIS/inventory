@@ -16,6 +16,10 @@
             <p class="text-gray-600 text-sm mt-1">Manage your product inventory</p>
         </div>
         <div class="flex space-x-2">
+            <a href="{{ route('products.import.show') }}" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center">
+                <i class="fas fa-file-import mr-2"></i>
+                Import Products
+            </a>
             <a href="{{ route('products.create') }}" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center">
                 <i class="fas fa-plus mr-2"></i>
                 Add Product
@@ -144,18 +148,11 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($products as $product)
                 <tr class="hover:bg-gray-50 transition">
-                    <!-- Product Name & Image -->
+                    <!-- Product Name -->
                     <td class="px-4 py-3 whitespace-nowrap">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 h-10 w-10">
-                                <img src="{{ $product->image_url }}" 
-                                     alt="{{ $product->name }}" 
-                                     class="h-10 w-10 rounded-lg object-cover">
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm font-semibold text-gray-900">{{ $product->name }}</p>
-                                <p class="text-xs text-gray-500">{{ $product->unit }}</p>
-                            </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900">{{ $product->name }}</p>
+                            <p class="text-xs text-gray-500">{{ $product->unit }}</p>
                         </div>
                     </td>
 

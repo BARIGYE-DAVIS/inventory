@@ -19,6 +19,21 @@
                 transform: translateX(-100%);
             }
         }
+
+        /* Accordion Styles */
+        .accordion-toggle {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .accordion-toggle i:last-child {
+            transition: transform 0.3s ease;
+            transform-origin: center;
+        }
+
+        .accordion-content {
+            will-change: max-height, opacity;
+        }
     </style>
     @stack('styles')
 </head>
@@ -44,18 +59,19 @@
             <!-- Navigation -->
             <nav class="p-4 space-y-2">
                 <!-- Dashboard -->
-                <a href="{{ route('cashier.dashboard') }}" class="flex items-center space-x-3 p-3 rounded-lg {{ request()->routeIs('cashier.dashboard') ? 'bg-yellow-800' : 'hover:bg-yellow-800' }}">
+                <a href="{{ route('cashier.dashboard') }}" class="flex items-center space-x-3 p-3 rounded-lg {{ request()->routeIs('cashier.dashboard') ? 'bg-yellow-800' : 'hover:bg-yellow-800' }} transition-colors">
                     <i class="fas fa-home text-lg"></i>
                     <span>My Dashboard</span>
                 </a>
 
-                          <a href="{{ route('profit.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-yellow-800">
-    <i class="fas fa-chart-pie text-lg"></i>
-    <span>My Profit</span>
-</a>
+                <!-- My Profit -->
+                <a href="{{ route('profit.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-yellow-800 transition-colors">
+                    <i class="fas fa-chart-pie text-lg"></i>
+                    <span>My Profit</span>
+                </a>
 
                 <!-- NEW SALE (BIGGEST BUTTON) -->
-                <a href="{{ route('pos.index') }}" class="flex items-center justify-center space-x-3 p-4 rounded-lg bg-green-600 hover:bg-green-700 text-white font-bold text-lg shadow-lg">
+                <a href="{{ route('pos.index') }}" class="flex items-center justify-center space-x-3 p-4 rounded-lg bg-green-600 hover:bg-green-700 text-white font-bold text-lg shadow-lg transition-colors">
                     <i class="fas fa-plus-circle text-2xl"></i>
                     <span>NEW SALE</span>
                 </a>
@@ -80,49 +96,66 @@
                         <i class="fas fa-receipt text-lg"></i>
                         <span>My Sales</span>
                     </div>
-                    <a href="{{ route('sales.index') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-yellow-800">
-                        <i class="fas fa-list text-sm"></i>
-                        <span>All My Sales</span>
-                    </a>
-                    <a href="{{ route('sales.today') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-yellow-800">
-                        <i class="fas fa-calendar-day text-sm"></i>
-                        <span>Today's Sales</span>
-                    </a>
                 </div>
 
-                {{-- Cashier Expenses links --}}
-<div class="space-y-1">
-  <div class="flex items-center space-x-3 p-3 text-indigo-300 font-semibold">
-    <i class="fas fa-wallet text-lg"></i><span>Expenses</span>
-  </div>
-  <a href="{{ route('cashier.expenses.create') }}" class="block p-3 pl-12 hover:bg-indigo-800">Record Expense</a>
-  <!--<a href="{{ route('cashier.expenses.my') }}" class="block p-3 pl-12 hover:bg-indigo-800">My Expenses</a>-->
- <!-- <a href="{{ route('cashier.expenses.today') }}" class="block p-3 pl-12 hover:bg-indigo-800">Today</a>-->
-</div>
+                <!-- EXPENSES SECTION (Accordion) -->
+                <div class="accordion-group">
+                    <button type="button" class="accordion-toggle flex items-center justify-between w-full p-3 rounded-lg text-left bg-indigo-700 hover:bg-indigo-600 transition-colors font-semibold" data-accordion="expenses">
+                        <span class="flex items-center space-x-3">
+                            <i class="fas fa-wallet text-lg"></i>
+                            <span>Expenses</span>
+                        </span>
+                        <i class="fas fa-chevron-down transition-transform duration-300"></i>
+                    </button>
+                    <div class="accordion-content expenses-content space-y-1 mt-2 max-h-96 overflow-hidden transition-all duration-300">
+                        <a href="{{ route('cashier.expenses.create') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800 transition-colors text-sm">
+                            <i class="fas fa-plus-circle text-xs"></i>
+                            <span>Record Expense</span>
+                        </a>
+                    </div>
+                </div>
 
-                <!-- My Performance -->
-                <a href="{{ route('cashier.performance') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-yellow-800">
-                    <i class="fas fa-chart-line text-lg"></i>
-                    <span>My Performance</span>
-                </a>
+                <!-- ANALYTICS SECTION (Accordion) -->
+                <div class="accordion-group">
+                    <button type="button" class="accordion-toggle flex items-center justify-between w-full p-3 rounded-lg text-left bg-purple-700 hover:bg-purple-600 transition-colors font-semibold" data-accordion="analytics">
+                        <span class="flex items-center space-x-3">
+                            <i class="fas fa-chart-line text-lg"></i>
+                            <span>Analytics</span>
+                        </span>
+                        <i class="fas fa-chevron-down transition-transform duration-300"></i>
+                    </button>
+                    <div class="accordion-content analytics-content space-y-1 mt-2 max-h-96 overflow-hidden transition-all duration-300">
+                        <a href="{{ route('cashier.performance') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-purple-800 transition-colors text-sm">
+                            <i class="fas fa-tachometer-alt text-xs"></i>
+                            <span>My Performance</span>
+                        </a>
+                    </div>
+                </div>
 
-                <!-- Customers -->
-                <a href="{{ route('customers.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-yellow-800">
-                    <i class="fas fa-users text-lg"></i>
-                    <span>Customers</span>
-                </a>
-
-                <!-- Search Product -->
-                <a href="{{ route('products.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-yellow-800">
-                    <i class="fas fa-search text-lg"></i>
-                    <span>Search Product</span>
-                </a>
-
-                <!-- My Profile -->
-                <a href="{{ route('profile.edit') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-yellow-800">
-                    <i class="fas fa-user-circle text-lg"></i>
-                    <span>My Profile</span>
-                </a>
+                <!-- MANAGEMENT SECTION (Accordion) -->
+                <div class="accordion-group">
+                    <button type="button" class="accordion-toggle flex items-center justify-between w-full p-3 rounded-lg text-left bg-cyan-700 hover:bg-cyan-600 transition-colors font-semibold" data-accordion="management">
+                        <span class="flex items-center space-x-3">
+                            <i class="fas fa-cog text-lg"></i>
+                            <span>Management</span>
+                        </span>
+                        <i class="fas fa-chevron-down transition-transform duration-300"></i>
+                    </button>
+                    <div class="accordion-content management-content space-y-1 mt-2 max-h-96 overflow-hidden transition-all duration-300">
+                        <a href="{{ route('customers.index') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-cyan-800 transition-colors text-sm">
+                            <i class="fas fa-users text-xs"></i>
+                            <span>Customers</span>
+                        </a>
+                        <a href="{{ route('products.index') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-cyan-800 transition-colors text-sm">
+                            <i class="fas fa-search text-xs"></i>
+                            <span>Search Product</span>
+                        </a>
+                        <a href="{{ route('profile.edit') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-cyan-800 transition-colors text-sm">
+                            <i class="fas fa-user-circle text-xs"></i>
+                            <span>My Profile</span>
+                        </a>
+                    </div>
+                </div>
             </nav>
 
             <!-- User Profile & Logout -->
@@ -235,6 +268,38 @@
             if (window.innerWidth < 768 && !sidebar.contains(event.target) && !toggleBtn) {
                 sidebar.classList.add('hidden-mobile');
             }
+        });
+
+        // Accordion Functionality
+        document.querySelectorAll('.accordion-toggle').forEach(button => {
+            button.addEventListener('click', function() {
+                const accordionName = this.getAttribute('data-accordion');
+                const content = document.querySelector('.' + accordionName + '-content');
+                const icon = this.querySelector('i:last-child');
+                const isExpanded = content.style.maxHeight && content.style.maxHeight !== '0px';
+
+                if (isExpanded) {
+                    // Collapse
+                    content.style.maxHeight = '0px';
+                    content.style.opacity = '0';
+                    content.style.marginTop = '0px';
+                    icon.style.transform = 'rotate(0deg)';
+                } else {
+                    // Expand
+                    content.style.maxHeight = content.scrollHeight + 'px';
+                    content.style.opacity = '1';
+                    content.style.marginTop = 'var(--tw-space-y-reverse, 0) calc(0.5rem * calc(1 - var(--tw-space-y-reverse)))';
+                    icon.style.transform = 'rotate(180deg)';
+                }
+            });
+        });
+
+        // Set initial state for accordion contents (collapsed by default)
+        document.querySelectorAll('.accordion-content').forEach(content => {
+            content.style.maxHeight = '0px';
+            content.style.opacity = '0';
+            content.style.overflow = 'hidden';
+            content.style.transition = 'all 0.3s ease';
         });
 
         // Auto-hide alerts

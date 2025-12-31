@@ -67,36 +67,39 @@ class ProductController extends Controller
         ->orderBy('name')
         ->get();
 
-    // ✅ AJAX REQUEST - Return JSON with HTML (for cashier grid view)
+    // ✅ AJAX REQUEST - Return JSON with HTML (for cashier table view)
     if ($request->ajax() || $request->has('ajax')) {
         $html = '';
         
         if ($products->count() > 0) {
             foreach ($products as $product) {
-                $stockClass = $product->quantity < 10 ?  'text-red-600 font-bold' : 'text-gray-600';
-                $imageHtml = $product->image 
-                    ? '<img src="' . asset('storage/' .  $product->image) . '" alt="' . $product->name . '" class="w-full h-full object-cover">'
-                    : '<div class="w-full h-full flex items-center justify-center"><i class="fas fa-box text-4xl text-gray-300"></i></div>';
+                $stockClass = $product->quantity < 10 ? 'text-red-600 font-bold' : 'text-gray-600';
+                $categoryHtml = $product->category 
+                    ? '<span class="inline-block px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">' . $product->category->name . '</span>'
+                    : '<span class="text-gray-400">-</span>';
                 
                 $html .= '
-                <a href="' . route('products. show', $product->id) .  '" class="border border-gray-200 rounded-lg p-3 hover:shadow-lg transition cursor-pointer">
-                    <div class="aspect-square bg-gray-100 rounded-lg mb-2 overflow-hidden">
-                        ' . $imageHtml . '
-                    </div>
-                    <h4 class="font-semibold text-sm text-gray-900 truncate" title="' . $product->name . '">' . $product->name . '</h4>
-                    ' . ($product->sku ? '<p class="text-xs text-gray-500">' . $product->sku . '</p>' : '') . '
-                    <p class="text-lg font-bold text-green-600 mt-1">UGX ' . number_format($product->selling_price, 0) .  '</p>
-                    <p class="text-xs ' . $stockClass . '">Stock: ' . $product->quantity . ' ' . ($product->unit ?? 'pcs') . '</p>
-                    ' . ($product->category ? '<span class="inline-block mt-2 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">' . $product->category->name . '</span>' : '') . '
-                </a>';
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-4 py-3 text-sm font-semibold text-gray-900">' . $product->name . '</td>
+                    <td class="px-4 py-3 text-sm text-gray-600">' . ($product->sku ?? '-') . '</td>
+                    <td class="px-4 py-3 text-sm text-gray-600">' . $categoryHtml . '</td>
+                    <td class="px-4 py-3 text-sm font-bold text-green-600 text-right">UGX ' . number_format($product->selling_price, 0) . '</td>
+                    <td class="px-4 py-3 text-sm text-right ' . $stockClass . '">' . $product->quantity . ' ' . ($product->unit ?? 'pcs') . '</td>
+                    <td class="px-4 py-3 text-center">
+                        <a href="' . route('products.show', $product->id) . '" class="inline-flex items-center px-3 py-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 transition">
+                            <i class="fas fa-eye mr-1"></i>View
+                        </a>
+                    </td>
+                </tr>';
             }
         } else {
             $html = '
-            <div class="col-span-full text-center py-12">
-                <i class="fas fa-search-minus text-6xl text-gray-300 mb-4"></i>
-                <p class="text-gray-500 text-lg">No products found</p>
-                <p class="text-gray-400 text-sm mt-2">Try a different search term or category</p>
-            </div>';
+            <tr>
+                <td colspan="6" class="px-4 py-12 text-center text-gray-500">
+                    <i class="fas fa-search-minus text-3xl mb-2"></i>
+                    <p class="text-lg">No products found</p>
+                </td>
+            </tr>';
         }
         
         return response()->json([
@@ -203,7 +206,6 @@ public function store(Request $request)
         'expiry_alert_days' => 'nullable|integer|min:1|max:365',
         
         'description' => 'nullable|string',
-        'image' => 'nullable|image|max:2048',
     ]);
 
     // ✅ HANDLE NEW CATEGORY CREATION
@@ -220,11 +222,6 @@ public function store(Request $request)
     // ✅ SET BUSINESS ID
     $validated['business_id'] = $user->business_id;
     $validated['is_active'] = true;
-
-    // ✅ Handle image upload
-    if ($request->hasFile('image')) {
-        $validated['image'] = $request->file('image')->store('products', 'public');
-    }
 
     // ✅ SET DEFAULT QUANTITY IF NOT PROVIDED
     if (!isset($validated['quantity'])) {
@@ -295,17 +292,7 @@ public function store(Request $request)
             'reorder_level' => 'nullable|integer|min:0',
             'expiry_date' => 'nullable|date',
             'description' => 'nullable|string',
-            'image' => 'nullable|image|max:2048',
         ]);
-
-        // Handle image upload
-        if ($request->hasFile('image')) {
-            // Delete old image
-            if ($product->image) {
-                Storage::disk('public')->delete($product->image);
-            }
-            $validated['image'] = $request->file('image')->store('products', 'public');
-        }
 
         $product->update($validated);
 
@@ -390,6 +377,297 @@ public function expiringSoon()
         ->paginate(20); // ✅ Changed from get() to paginate()
 
     return view('products.expiring-soon', compact('products'));
+}
+
+/**
+ * Show import products form
+ */
+public function showImport()
+{
+    $categories = Category::where('business_id', Auth::user()->business_id)
+        ->orderBy('name')
+        ->get();
+
+    return view('products.import', compact('categories'));
+}
+
+/**
+ * Handle product import from CSV/Excel
+ */
+public function import(Request $request)
+{
+    $request->validate([
+        'file' => 'required|file|mimes:csv,txt,xlsx,xls|max:5120', // 5MB max
+    ], [
+        'file.required' => 'Please select a file to import',
+        'file.mimes' => 'File must be CSV or Excel format',
+        'file.max' => 'File size must not exceed 5MB'
+    ]);
+
+    $businessId = Auth::user()->business_id;
+    $file = $request->file('file');
+    $fileContents = file_get_contents($file->path());
+
+    // Handle both CSV and Excel files
+    if (in_array($file->getClientOriginalExtension(), ['xlsx', 'xls'])) {
+        $products = $this->parseExcelFile($file);
+    } else {
+        $products = $this->parseCSVFile($fileContents);
+    }
+
+    if (empty($products)) {
+        return back()->withErrors(['file' => 'The file is empty or has an invalid format']);
+    }
+
+    $imported = 0;
+    $errors = [];
+    $row = 2; // Start from row 2 (after header)
+
+    foreach ($products as $productData) {
+        try {
+            // Validate required fields
+            if (empty($productData['name'])) {
+                $errors[] = "Row $row: Product name is required";
+                $row++;
+                continue;
+            }
+
+            if (empty($productData['sku'])) {
+                $errors[] = "Row $row: SKU is required";
+                $row++;
+                continue;
+            }
+
+            // Check if product already exists by SKU
+            $existingProduct = Product::where('business_id', $businessId)
+                ->where('sku', $productData['sku'])
+                ->first();
+
+            if ($existingProduct) {
+                $errors[] = "Row $row: Product with SKU '{$productData['sku']}' already exists";
+                $row++;
+                continue;
+            }
+
+            // Get or create category
+            $categoryId = null;
+            if (!empty($productData['category'])) {
+                $category = Category::firstOrCreate(
+                    ['business_id' => $businessId, 'name' => $productData['category']],
+                    ['description' => '']
+                );
+                $categoryId = $category->id;
+            }
+
+            // Create product
+            Product::create([
+                'business_id' => $businessId,
+                'category_id' => $categoryId,
+                'name' => $productData['name'],
+                'sku' => $productData['sku'],
+                'description' => $productData['description'] ?? '',
+                'cost_price' => (float)($productData['cost_price'] ?? 0),
+                'selling_price' => (float)($productData['selling_price'] ?? 0),
+                'quantity' => (int)($productData['quantity'] ?? 0),
+                'unit' => $productData['unit'] ?? 'pcs',
+                'barcode' => $productData['barcode'] ?? null,
+                'expiry_date' => !empty($productData['expiry_date']) ? date('Y-m-d', strtotime($productData['expiry_date'])) : null,
+                'is_active' => true
+            ]);
+
+            $imported++;
+        } catch (\Exception $e) {
+            $errors[] = "Row $row: Error importing product - " . $e->getMessage();
+        }
+
+        $row++;
+    }
+
+    if ($imported > 0) {
+        $message = "Successfully imported $imported product" . ($imported > 1 ? 's' : '');
+        if (!empty($errors)) {
+            $message .= '. ' . count($errors) . ' row(s) had errors';
+        }
+    } else {
+        $message = 'No products were imported';
+    }
+
+    return redirect()->route('products.index')
+        ->with('success', $message)
+        ->with('import_errors', $errors);
+}
+
+/**
+ * Parse CSV file and return products array
+ */
+private function parseCSVFile($fileContents)
+{
+    $lines = array_filter(array_map('str_getcsv', explode("\n", $fileContents)));
+    
+    if (empty($lines)) {
+        return [];
+    }
+
+    $header = array_shift($lines);
+    $products = [];
+
+    foreach ($lines as $line) {
+        if (count($line) < count($header)) {
+            $line = array_pad($line, count($header), '');
+        }
+
+        $product = array_combine($header, array_slice($line, 0, count($header)));
+        
+        // Clean keys (remove spaces and convert to lowercase)
+        $product = array_combine(
+            array_map(function($key) { return strtolower(trim($key)); }, array_keys($product)),
+            $product
+        );
+
+        if (!empty($product['name'])) {
+            $products[] = $product;
+        }
+    }
+
+    return $products;
+}
+
+/**
+ * Parse Excel file and return products array
+ */
+private function parseExcelFile($file)
+{
+    try {
+        $zip = new \ZipArchive();
+        
+        if ($zip->open($file->path()) !== true) {
+            return [];
+        }
+
+        // Read shared strings (text values)
+        $sharedStringsXml = $zip->getFromName('xl/sharedStrings.xml');
+        $sharedStrings = [];
+        
+        if ($sharedStringsXml !== false) {
+            $doc = new \DOMDocument();
+            $doc->loadXML($sharedStringsXml);
+            $stringElements = $doc->getElementsByTagName('si');
+            
+            foreach ($stringElements as $si) {
+                $tElements = $si->getElementsByTagName('t');
+                $value = '';
+                foreach ($tElements as $t) {
+                    $value .= $t->nodeValue;
+                }
+                $sharedStrings[] = $value;
+            }
+        }
+
+        // Read worksheet
+        $worksheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $zip->close();
+        
+        if ($worksheetXml === false) {
+            return [];
+        }
+
+        // Parse worksheet
+        $doc = new \DOMDocument();
+        $doc->loadXML($worksheetXml);
+        
+        $rows = $doc->getElementsByTagName('row');
+        $products = [];
+        $headerRow = null;
+        $rowIndex = 0;
+
+        foreach ($rows as $row) {
+            $cells = $row->getElementsByTagName('c');
+            $rowData = [];
+            $colIndex = 0;
+
+            foreach ($cells as $cell) {
+                $value = '';
+                $cellType = $cell->getAttribute('t');
+                
+                // Get the cell value
+                $cellValue = $cell->getElementsByTagName('v');
+                if ($cellValue->length > 0) {
+                    $value = $cellValue->item(0)->nodeValue;
+                    
+                    // If it's a shared string reference, get the actual string
+                    if ($cellType === 's') {
+                        $stringIndex = (int)$value;
+                        $value = isset($sharedStrings[$stringIndex]) ? $sharedStrings[$stringIndex] : '';
+                    }
+                }
+                
+                $rowData[$colIndex] = trim($value);
+                $colIndex++;
+            }
+
+            if ($rowIndex === 0) {
+                // First row is header
+                $headerRow = array_map(function($h) { 
+                    return strtolower(trim($h)); 
+                }, $rowData);
+            } else {
+                // Skip empty rows
+                if (!empty(array_filter($rowData))) {
+                    // Combine with header
+                    if ($headerRow) {
+                        $product = array_combine(
+                            $headerRow,
+                            array_pad($rowData, count($headerRow), '')
+                        );
+                        if (!empty($product['name'])) {
+                            $products[] = $product;
+                        }
+                    }
+                }
+            }
+
+            $rowIndex++;
+        }
+
+        return $products;
+    } catch (\Exception $e) {
+        return [];
+    }
+}
+
+/**
+ * Download import template
+ */
+public function downloadTemplate()
+{
+    $file = storage_path('app/templates/product-import-template.csv');
+    
+    // Create template if it doesn't exist
+    if (!file_exists($file)) {
+        @mkdir(dirname($file), 0755, true);
+        
+        $header = ['Name', 'SKU', 'Category', 'Description', 'Cost Price', 'Selling Price', 'Quantity', 'Unit', 'Barcode', 'Expiry Date'];
+        $fp = fopen($file, 'w');
+        fputcsv($fp, $header);
+        
+        // Add sample data
+        $sample = [
+            'Sample Product 1',
+            'SKU001',
+            'Electronics',
+            'Sample description',
+            '100.00',
+            '150.00',
+            '50',
+            'pcs',
+            '1234567890',
+            '2025-12-31'
+        ];
+        fputcsv($fp, $sample);
+        fclose($fp);
+    }
+
+    return response()->download($file, 'product-import-template.csv');
 }
 
 }

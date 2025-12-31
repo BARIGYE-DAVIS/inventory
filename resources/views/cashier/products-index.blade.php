@@ -48,55 +48,61 @@
         </div>
     </div>
 
-    <!-- Products Grid -->
+    <!-- Products Table -->
     <div class="bg-white rounded-xl shadow-lg p-6">
         <h3 class="text-lg font-bold text-gray-800 mb-6">
-            <i class="fas fa-th-large text-green-600 mr-2"></i>Products
+            <i class="fas fa-list text-green-600 mr-2"></i>Products
         </h3>
 
-        <div id="productsGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            @forelse($products as $product)
-            <a href="{{ route('products.show', $product->id) }}" class="border border-gray-200 rounded-lg p-3 hover:shadow-lg transition cursor-pointer">
-                
-                <!-- Product Image -->
-                <div class="aspect-square bg-gray-100 rounded-lg mb-2 overflow-hidden">
-                    @if($product->image)
-                    <img src="{{ asset('storage/' . $product->image) }}" 
-                         alt="{{ $product->name }}" 
-                         class="w-full h-full object-cover">
-                    @else
-                    <div class="w-full h-full flex items-center justify-center">
-                        <i class="fas fa-box text-4xl text-gray-300"></i>
-                    </div>
-                    @endif
-                </div>
-
-                <!-- Product Info -->
-                <h4 class="font-semibold text-sm text-gray-900 truncate" title="{{ $product->name }}">
-                    {{ $product->name }}
-                </h4>
-                @if($product->sku)
-                <p class="text-xs text-gray-500">{{ $product->sku }}</p>
-                @endif
-                <p class="text-lg font-bold text-green-600 mt-1">
-                    UGX {{ number_format($product->selling_price, 0) }}
-                </p>
-                <p class="text-xs {{ $product->quantity < 10 ? 'text-red-600 font-bold' : 'text-gray-600' }}">
-                    Stock: {{ $product->quantity }} {{ $product->unit ?? 'pcs' }}
-                </p>
-                
-                @if($product->category)
-                <span class="inline-block mt-2 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
-                    {{ $product->category->name }}
-                </span>
-                @endif
-            </a>
-            @empty
-            <div class="col-span-full text-center py-12">
-                <i class="fas fa-search-minus text-6xl text-gray-300 mb-4"></i>
-                <p class="text-gray-500 text-lg">No products found</p>
-            </div>
-            @endforelse
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700">Product Name</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700">SKU</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700">Category</th>
+                        <th class="px-4 py-3 text-right text-xs font-semibold text-gray-700">Price</th>
+                        <th class="px-4 py-3 text-right text-xs font-semibold text-gray-700">Stock</th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-700">View</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    @forelse($products as $product)
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-4 py-3 text-sm font-semibold text-gray-900">{{ $product->name }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600">{{ $product->sku ?? '-' }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600">
+                            @if($product->category)
+                                <span class="inline-block px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                                    {{ $product->category->name }}
+                                </span>
+                            @else
+                                <span class="text-gray-400">-</span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3 text-sm font-bold text-green-600 text-right">
+                            UGX {{ number_format($product->selling_price, 0) }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-right {{ $product->quantity < 10 ? 'text-red-600 font-bold' : 'text-gray-600' }}">
+                            {{ $product->quantity }} {{ $product->unit ?? 'pcs' }}
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            <a href="{{ route('products.show', $product->id) }}" 
+                               class="inline-flex items-center px-3 py-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 transition">
+                                <i class="fas fa-eye mr-1"></i>View
+                            </a>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="6" class="px-4 py-12 text-center text-gray-500">
+                            <i class="fas fa-search-minus text-3xl mb-2"></i>
+                            <p class="text-lg">No products found</p>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
 
         <!-- Pagination -->
@@ -115,7 +121,7 @@
 let searchTimeout = null;
 const searchInput = document.getElementById('liveSearchInput');
 const categoryFilter = document.getElementById('liveCategoryFilter');
-const productsGrid = document.getElementById('productsGrid');
+const productsTable = document.querySelector('tbody');
 const resultsCount = document.getElementById('resultsCount');
 const searchSpinner = document.getElementById('searchSpinner');
 
@@ -126,7 +132,7 @@ async function fetchProducts() {
 
     // Show loading
     searchSpinner.classList.remove('hidden');
-    productsGrid.style.opacity = '0.5';
+    productsTable.style.opacity = '0.5';
 
     try {
         const params = new URLSearchParams();
@@ -143,15 +149,15 @@ async function fetchProducts() {
         const data = await response.json();
 
         if (data.success) {
-            productsGrid.innerHTML = data.html;
+            productsTable.innerHTML = data.html;
             resultsCount.textContent = data.count + ' products found';
         }
     } catch (error) {
         console.error('Error:', error);
-        productsGrid.innerHTML = '<div class="col-span-full text-center py-12 text-red-500"><i class="fas fa-exclamation-triangle text-5xl mb-3"></i><p>Error loading products</p></div>';
+        productsTable.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-red-500"><i class="fas fa-exclamation-triangle text-3xl mb-3"></i><p>Error loading products</p></td></tr>';
     } finally {
         searchSpinner.classList.add('hidden');
-        productsGrid.style.opacity = '1';
+        productsTable.style.opacity = '1';
     }
 }
 

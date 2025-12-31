@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{User, Sale, Role};
+use App\Models\{User, Sale, Role, Location};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Auth, Hash, DB};
 use Illuminate\Validation\Rule;
@@ -62,9 +62,15 @@ class StaffController extends Controller
      */
     public function create()
     {
+        $user = Auth::user();
         $roles = Role::orderBy('display_name')->get();
+        $locations = Location::where('business_id', $user->business_id)
+            ->where('is_active', true)
+            ->orderBy('is_main', 'desc')
+            ->orderBy('name')
+            ->get();
         
-        return view('staff.create', compact('roles'));
+        return view('staff.create', compact('roles', 'locations'));
     }
 
     /**
@@ -87,6 +93,7 @@ class StaffController extends Controller
             'phone' => ['required', 'string', 'max:20'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role_id' => ['required', 'exists:roles,id'],
+            'location_id' => ['nullable', 'exists:locations,id'],
         ], [
             'email.unique' => 'This email is already registered in your business.',
             'role_id.required' => 'Please select a role for the staff member.',
@@ -101,6 +108,7 @@ class StaffController extends Controller
                 'phone' => $validated['phone'],
                 'password' => Hash::make($validated['password']),
                 'role_id' => $validated['role_id'],
+                'location_id' => $validated['location_id'] ?? null,
                 'is_active' => true,
                 'is_owner' => false,
             ]);
@@ -226,12 +234,19 @@ class StaffController extends Controller
         }
 
         // Load relationships
-        $staff->load('role');
+        $staff->load('role', 'location');
         
         // Get all available roles
         $roles = Role::orderBy('display_name')->get();
+        
+        // Get all active locations
+        $locations = Location::where('business_id', Auth::user()->business_id)
+            ->where('is_active', true)
+            ->orderBy('is_main', 'desc')
+            ->orderBy('name')
+            ->get();
 
-        return view('staff.edit', compact('staff', 'roles'));
+        return view('staff.edit', compact('staff', 'roles', 'locations'));
     }
 
     /**
@@ -274,6 +289,7 @@ class StaffController extends Controller
             ],
             'phone' => ['required', 'string', 'max:20'],
             'role_id' => ['required', 'exists:roles,id'],
+            'location_id' => ['nullable', 'exists:locations,id'],
             'is_active' => ['required', 'boolean'],
         ];
 
@@ -297,6 +313,7 @@ class StaffController extends Controller
                 'email' => $validated['email'],
                 'phone' => $validated['phone'],
                 'role_id' => $validated['role_id'],
+                'location_id' => $validated['location_id'] ?? null,
                 'is_active' => $validated['is_active'],
             ];
 
