@@ -23,6 +23,7 @@ class Business extends Model
         'is_active',
         'subscription_plan',
         'subscription_expires_at',
+        'owner_id',
         // ✅ Email/SMTP Settings
         'smtp_email',
         'smtp_password',
@@ -44,11 +45,11 @@ class Business extends Model
         'subscription_expires_at' => 'datetime',
         'email_configured' => 'boolean',
         'tax_enabled' => 'boolean',
-        'tax_rate' => 'decimal:2',
+        'tax_rate' => 'decimal: 2',
     ];
 
     // =====================================
-    // ✅ NEW: SMTP Password Encryption/Decryption
+    // ✅ NEW:  SMTP Password Encryption/Decryption
     // =====================================
 
     /**
@@ -75,7 +76,7 @@ class Business extends Model
         }
 
         try {
-            return Crypt::decryptString($value);
+            return Crypt:: decryptString($value);
         } catch (\Throwable $e) {
             // If decryption fails (old plaintext password), return raw value
             return $value;
@@ -85,7 +86,7 @@ class Business extends Model
     /**
      * Get decrypted SMTP password (explicit method for MailerService)
      */
-    public function getDecryptedSmtpPassword(): ?string
+    public function getDecryptedSmtpPassword(): ? string
     {
         $raw = $this->getAttributes()['smtp_password'] ?? null;
         if (empty($raw)) {
@@ -110,7 +111,7 @@ class Business extends Model
     public function hasEmailConfigured(): bool
     {
         return $this->email_configured && 
-               !empty($this->smtp_email) && 
+               ! empty($this->smtp_email) && 
                !empty($this->getDecryptedSmtpPassword());
     }
 
@@ -133,7 +134,7 @@ class Business extends Model
      */
     public function getLogoUrlAttribute(): ?string
     {
-        if (!$this->logo) {
+        if (! $this->logo) {
             return null;
         }
 
@@ -151,7 +152,7 @@ class Business extends Model
      */
     public function hasLogo(): bool
     {
-        return !empty($this->logo);
+        return ! empty($this->logo);
     }
 
     /**
@@ -166,60 +167,101 @@ class Business extends Model
     // ✅ Relationships
     // =====================================
 
+    /**
+     * Get the owner (User) of this business
+     */
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    /**
+     * Get the business category
+     */
     public function businessCategory(): BelongsTo
     {
         return $this->belongsTo(BusinessCategory::class);
     }
 
+    /**
+     * Get all users belonging to this business
+     */
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
     }
 
+    /**
+     * Get all products for this business
+     */
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);
     }
 
+    /**
+     * Get all customers for this business
+     */
     public function customers(): HasMany
     {
         return $this->hasMany(Customer::class);
     }
 
+    /**
+     * Get all suppliers for this business
+     */
     public function suppliers(): HasMany
     {
-        return $this->hasMany(Supplier::class);
+        return $this->hasMany(Supplier:: class);
     }
 
+    /**
+     * Get all locations for this business
+     */
     public function locations(): HasMany
     {
         return $this->hasMany(Location::class);
     }
 
+    /**
+     * Get all sales for this business
+     */
     public function sales(): HasMany
     {
         return $this->hasMany(Sale::class);
     }
 
+    /**
+     * Get all purchases for this business
+     */
     public function purchases(): HasMany
     {
         return $this->hasMany(Purchase::class);
     }
 
+    /**
+     * Get all categories for this business
+     */
     public function categories(): HasMany
     {
-        return $this->hasMany(Category::class);
+        return $this->hasMany(Category:: class);
     }
 
     // =====================================
     // ✅ Business Status Methods
     // =====================================
 
+    /**
+     * Check if business is active
+     */
     public function isActive(): bool
     {
         return $this->is_active;
     }
 
+    /**
+     * Check if subscription is still active
+     */
     public function isSubscriptionActive(): bool
     {
         if (!$this->subscription_expires_at) {
@@ -229,9 +271,12 @@ class Business extends Model
         return $this->subscription_expires_at->isFuture();
     }
 
+    /**
+     * Get days until subscription expires
+     */
     public function daysUntilExpiry(): ?int
     {
-        if (!$this->subscription_expires_at) {
+        if (! $this->subscription_expires_at) {
             return null;
         }
 
@@ -279,7 +324,7 @@ class Business extends Model
      */
     public function formatCurrency(float $amount): string
     {
-        $currency = $this->currency ?? 'UGX';
+        $currency = $this->currency ??  'UGX';
         
         return $currency . ' ' . number_format($amount, 0);
     }
@@ -339,7 +384,7 @@ class Business extends Model
      */
     public function getSubscriptionStatusColorAttribute(): string
     {
-        if (!$this->subscription_expires_at) {
+        if (! $this->subscription_expires_at) {
             return 'green'; // Lifetime
         }
 

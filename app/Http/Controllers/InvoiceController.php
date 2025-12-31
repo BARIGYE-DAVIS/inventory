@@ -1,0 +1,438 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\{
+    Invoice, InvoiceItem, Customer, Product, User, Business, Sale, SaleItem
+};
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use App\Services\MailerService;
+
+class InvoiceController extends Controller
+{
+    // INDEX: List all invoices, with search and status filterstroy
+    public function index(Request $request)
+    {
+        $status = $request->query('status');
+        $search = $request->query('search');
+        $customerId = $request->query('customer_id');
+        $query = Invoice::with('customer')->orderByDesc('created_at');
+        if ($status) {
+            $query->where('status', $status);
+        }
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('invoice_number', 'like', "%$search%")
+                  ->orWhereHas('customer', function($q2) use ($search) {
+                      $q2->where('name', 'like', "%$search%");
+                  });
+            });
+        }
+        if ($customerId) {
+            $query->where('customer_id', $customerId);
+        }
+
+        $invoices = $query->paginate(20);
+        $customers = Customer::orderBy('name')->get();
+
+        return view('invoices.index', compact('invoices', 'status', 'search', 'customerId', 'customers'));
+    }
+
+    // PAID AJAX FILTER (for partial table reloads)
+    public function paid(Request $request)
+    {
+        $search = $request->query('search');
+        $query = Invoice::with('customer')->where('status', 'paid')->orderByDesc('created_at');
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('invoice_number', 'like', "%$search%")
+                  ->orWhereHas('customer', function($q2) use ($search) {
+                      $q2->where('name', 'like', "%$search%");
+                  });
+            });
+        }
+        $invoices = $query->limit(20)->get();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('invoices.partials.table', compact('invoices'))->render()
+            ]);
+        }
+
+        return view('invoices.index', [
+            'status' => 'paid',
+            'invoices' => $invoices
+        ]);
+    }
+
+    // UNPAID AJAX FILTER
+    public function unpaid(Request $request)
+    {
+        $search = $request->query('search');
+        $query = Invoice::with('customer')->where('status', 'unpaid')->orderByDesc('created_at');
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('invoice_number', 'like', "%$search%")
+                  ->orWhereHas('customer', function($q2) use ($search) {
+                      $q2->where('name', 'like', "%$search%");
+                  });
+            });
+        }
+        $invoices = $query->limit(20)->get();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('invoices.partials.table', compact('invoices'))->render()
+            ]);
+        }
+
+        return view('invoices.index', [
+            'status' => 'unpaid',
+            'invoices' => $invoices
+        ]);
+    }
+
+    // SHOW a single invoice, with details/print view
+    public function show($id)
+    {
+        $invoice = Invoice::with(['customer','user','items.product'])->findOrFail($id);
+        $business = Business::findOrFail($invoice->business_id);
+        return view('invoices.show', compact('invoice', 'business'));
+    }
+
+    // PRINTABLE invoice view
+    public function print($id)
+    {
+        $invoice = Invoice::with(['customer','user','items.product'])->findOrFail($id);
+        $business = Business::findOrFail($invoice->business_id);
+        return view('invoices.print', compact('invoice', 'business'));
+    }
+
+    public function destroy($id)
+    {
+        $invoice = Invoice::findOrFail($id);
+        if ($invoice->status === 'unpaid') {
+            return back()->with('error', 'Cannot delete a unpaid invoice.');
+        }
+        $invoice->delete();
+        return back()->with('success', 'Invoice deleted!');
+    }
+
+    // EDIT invoice UI, with history
+    public function edit($id)
+    {
+        $invoice = Invoice::with(['items.product', 'customer'])->findOrFail($id);
+        if ($invoice->status !== 'unpaid') {
+            return redirect()->route('invoices.show', $invoice->id)
+                ->with('error', 'Cannot edit a paid or partially paid invoice.');
+        }
+        $products = Product::all();
+        $history = DB::table('invoice_histories')->where('invoice_id', $invoice->id)->orderByDesc('created_at')->get();
+        return view('invoices.edit', compact('invoice', 'products', 'history'));
+    }
+
+    // SMART UPDATE invoice items (pos cart updating with history)
+    public function updateCart(Request $request, $id)
+    {
+        $invoice = Invoice::with('items.product', 'customer')->findOrFail($id);
+        $validated = $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|numeric|min:0.01',
+            'items.*.price' => 'required|numeric|min:0',
+            'items.*.discount' => 'nullable|numeric|min:0',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Save history before update
+            DB::table('invoice_histories')->insert([
+                'invoice_id' => $invoice->id,
+                'snapshot' => json_encode([
+                    'items' => $invoice->items->map(function($item){
+                        return [
+                            'product_id' => $item->product_id,
+                            'product_name' => $item->description ?? optional($item->product)->name,
+                            'quantity' => $item->quantity,
+                            'price' => $item->unit_price,
+                            'discount' => $item->discount,
+                            'total' => $item->total,
+                        ];
+                    }),
+                    'customer' => optional($invoice->customer)->name,
+                    'notes' => $invoice->notes,
+                    'subtotal' => $invoice->subtotal,
+                    'total' => $invoice->total,
+                    'status' => $invoice->status,
+                ]),
+                'edited_by' => Auth::user() ? Auth::user()->name : null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $existingItems = $invoice->items->keyBy('product_id');
+            $newProductIds = collect($validated['items'])->pluck('product_id')->map(fn($p) => (int) $p)->toArray();
+
+            // Update or create items
+            foreach ($validated['items'] as $item) {
+                $lineTotal = ($item['price'] - ($item['discount'] ?? 0)) * $item['quantity'];
+                $invoiceItem = $existingItems->get($item['product_id']);
+                if ($invoiceItem) {
+                    $invoiceItem->update([
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $item['price'],
+                        'discount' => $item['discount'] ?? 0,
+                        'total' => $lineTotal,
+                    ]);
+                } else {
+                    $invoice->items()->create([
+                        'product_id' => $item['product_id'],
+                        'description' => Product::find($item['product_id'])->name,
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $item['price'],
+                        'discount' => $item['discount'] ?? 0,
+                        'total' => $lineTotal,
+                    ]);
+                }
+            }
+
+            // Remove items not present in the request
+            $existingItems->each(function($oldItem, $productId) use ($newProductIds) {
+                if (!in_array($productId, $newProductIds)) {
+                    $oldItem->delete();
+                }
+            });
+
+            // Update totals and notes
+            $subtotal = collect($validated['items'])->sum(function($item) {
+                return ($item['price'] - ($item['discount'] ?? 0)) * $item['quantity'];
+            });
+            $invoice->subtotal = $subtotal;
+            $invoice->total = $subtotal;
+            $invoice->notes = $validated['notes'] ?? null;
+            $invoice->save();
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Invoice updated successfully! History recorded.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Could not update invoice: '.$e->getMessage());
+        }
+    }
+
+    // ADD PRODUCT (via separate form)
+    public function addProduct(Request $request, $id)
+    {
+        $invoice = Invoice::findOrFail($id);
+        if ($invoice->status !== 'unpaid') {
+            return back()->with('error', 'Cannot add products to a paid or partially paid invoice.');
+        }
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'quantity'   => 'required|numeric|min:1',
+        ]);
+        $product = Product::findOrFail($request->product_id);
+        $item = new InvoiceItem([
+            'product_id'  => $product->id,
+            'description' => $product->name,
+            'quantity'    => $request->quantity,
+            'unit_price'  => $product->selling_price,
+            'total'       => $product->selling_price * $request->quantity,
+            'added_by'    => Auth::id(),
+        ]);
+        $invoice->items()->save($item);
+
+        // Recalculate totals
+        $subtotal = $invoice->items()->sum(DB::raw('quantity * unit_price'));
+        $discount = $invoice->discount_amount ?? 0;
+        $tax     = $invoice->tax_amount    ?? 0;
+        $total   = $subtotal - $discount + $tax;
+        $invoice->update([
+            'subtotal' => $subtotal,
+            'total'    => $total,
+        ]);
+        return back()->with('success', 'Product added to invoice.');
+    }
+
+    /**
+     * CREATE POS INVOICE (AJAX version)
+     * Automatically sends the invoice as PDF and HTML via email after commit.
+     */
+    public function posInvoice(Request $request)
+    {
+        $user = Auth::user();
+        $businessId = $user->business_id;
+
+        $validated = $request->validate([
+            'customer_option'    => ['required', 'in:existing,new'],
+            'items'              => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['required', 'exists:products,id'],
+            'items.*.quantity'   => ['required', 'numeric', 'min:0.01'],
+            'items.*.price'      => ['required', 'numeric', 'min:0'],
+            'discount'           => ['nullable', 'numeric', 'min:0'],
+            'add_tax'            => ['nullable', 'boolean'],
+            'notes'              => ['nullable', 'string', 'max:500'],
+        ]);
+
+        DB::beginTransaction();
+        try {
+            if ($validated['customer_option'] === 'existing') {
+                $customerId = $request->input('customer_id');
+                if (!$customerId) throw new \Exception('Please select a customer for credit invoice.');
+            } else {
+                $customer = Customer::create([
+                    'business_id' => $businessId,
+                    'name'        => $request->input('new_customer_name'),
+                    'phone'       => $request->input('new_customer_phone'),
+                    'email'       => $request->input('new_customer_email'),
+                    'address'     => $request->input('new_customer_address'),
+                    'is_active'   => true,
+                ]);
+                $customerId = $customer->id;
+            }
+
+            $latestId = Invoice::where('business_id', $businessId)->max('id') ?? 1;
+            $invoiceNum = 'INV-' . now()->format('Ymd') . '-' . str_pad($latestId+1, 4, '0', STR_PAD_LEFT);
+            $invoice = Invoice::create([
+                'business_id'    => $businessId,
+                'user_id'        => $user->id,
+                'customer_id'    => $customerId,
+                'invoice_number' => $invoiceNum,
+                'status'         => 'unpaid',
+                'due_date'       => now()->addDays(14),
+                'subtotal'       => 0,
+                'discount_amount'=> 0,
+                'tax_amount'     => 0,
+                'total'          => 0,
+                'paid'           => 0,
+                'notes'          => $request->input('notes', null),
+            ]);
+
+            $subtotal = 0;
+            foreach ($validated['items'] as $item) {
+                $product = Product::find($item['product_id']);
+                $lineTotal = $item['quantity'] * $item['price'];
+                InvoiceItem::create([
+                    'invoice_id'  => $invoice->id,
+                    'description' => $product->name,
+                    'product_id'  => $product->id,
+                    'quantity'    => $item['quantity'],
+                    'unit_price'  => $item['price'],
+                    'total'       => $lineTotal,
+                    'added_by'    => $user->id
+                ]);
+                $subtotal += $lineTotal;
+                if ($product) {
+                    $product->decrement('quantity', $item['quantity']);
+                }
+            }
+
+            $discount = $request->input('discount', 0);
+            $taxAmount = $request->input('add_tax') ? max(0, ($subtotal - $discount) * 0.18) : 0;
+            $total = $subtotal - $discount + $taxAmount;
+
+            $invoice->update([
+                'subtotal'        => $subtotal,
+                'discount_amount' => $discount,
+                'tax_amount'      => $taxAmount,
+                'total'           => $total,
+            ]);
+
+            DB::commit();
+
+            // --- Automatically Send Invoice Email with PDF ---
+            try {
+                if ($invoice->customer && $invoice->customer->email) {
+                    $invoice->load(['business', 'customer', 'items.product', 'user']);
+                    MailerService::sendInvoice($invoice);
+                }
+            } catch (\Exception $e) {
+                // You may log this, do not break process
+            }
+
+            return response()->json([
+                'success'        => true,
+                'message'        => 'Invoice created and sent!',
+                'invoice_id'     => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'total'          => $invoice->total,
+                'customer'       => $invoice->customer->name ?? 'Unknown',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function deleteItem($invoiceId, $itemId)
+    {
+        $item = InvoiceItem::where('invoice_id', $invoiceId)->where('id', $itemId)->firstOrFail();
+        $item->delete();
+        $invoice = Invoice::find($invoiceId);
+        if ($invoice) {
+            $subtotal = $invoice->items()->sum(DB::raw('(unit_price - IFNULL(discount,0)) * quantity'));
+            $invoice->subtotal = $subtotal;
+            $invoice->total = $subtotal;
+            $invoice->save();
+        }
+        return back()->with('success', 'Invoice item deleted!');
+    }
+
+    // MARK INVOICE AS PAID (with automatic sale)
+ public function markPaid($id, Request $request)
+{
+    $invoice = Invoice::with(['items', 'business', 'customer', 'user'])->findOrFail($id);
+    $paymentAmount = $request->input('amount', $invoice->total);
+
+    if ($invoice->status === 'paid') {
+        return back()->with('info', 'Invoice already settled.');
+    }
+
+    // Update payment information
+    $invoice->paid = $paymentAmount >= $invoice->total ? $invoice->total : $paymentAmount;
+    $invoice->status = ($invoice->paid >= $invoice->total) ? 'paid' : 'partial';
+    $invoice->save();
+
+    // CREATE SALE ONLY when fully paid
+    if ($invoice->status === 'paid') {
+        $sale = Sale::create([
+            'business_id'     => $invoice->business_id,
+            'user_id'         => $invoice->user_id,
+            'customer_id'     => $invoice->customer_id,
+            'sale_number'     => 'SALE-' . now()->format('Ymd') . '-' . rand(1000, 9999),
+            'sale_date'       => now(),
+            'subtotal'        => $invoice->subtotal,
+            'tax_amount'      => $invoice->tax_amount,
+            'discount_amount' => $invoice->discount_amount,
+            'total'           => $invoice->total,
+            'payment_status'  => 'paid',
+            'payment_method'  => 'credit',
+            'notes'           => 'From invoice ' . $invoice->invoice_number,
+        ]);
+        foreach ($invoice->items as $item) {
+            SaleItem::create([
+                'sale_id'    => $sale->id,
+                'product_id' => $item->product_id,
+                'quantity'   => $item->quantity,
+                'unit_price' => $item->unit_price,
+                'total'      => $item->total,
+            ]);
+        }
+
+        // SEND THE PAID RECEIPT TO CUSTOMER
+        try {
+            if ($invoice->customer && $invoice->customer->email) {
+                \App\Services\MailerService::sendInvoiceReceipt($invoice);
+            }
+        } catch (\Exception $e) {
+            // Optionally log error: do not break flow!
+            // \Log::warning('Failed to send paid receipt: '.$e->getMessage());
+        }
+    }
+
+    return back()->with('success', 'Invoice payment updated & receipt sent!');
+}
+}

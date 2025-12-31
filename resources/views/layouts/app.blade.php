@@ -71,37 +71,25 @@
                     <span>Profit Report</span>
                 </a>
 
-                <a href="{{ route('pos.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800 transition-colors">
+             <a href="{{ route('profit.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-700">
+            <i class="fas fa-chart-pie text-lg"></i>
+         <span>Profit Report</span>
+        </a>
+      
+
+                <a href="{{ route('pos.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800">
                     <i class="fas fa-cash-register text-lg text-green-400"></i>
                     <span>POS - New Sale</span>
                 </a>
-
-                <!-- PRODUCTS SECTION (Accordion) -->
-                <div class="accordion-group mt-4">
-                    <button type="button" class="accordion-toggle flex items-center justify-between w-full p-3 rounded-lg text-left bg-blue-700 hover:bg-blue-600 transition-colors font-semibold" data-accordion="products">
-                        <span class="flex items-center space-x-3">
-                            <i class="fas fa-box text-lg"></i>
-                            <span>Products</span>
-                        </span>
-                        <i class="fas fa-chevron-down transition-transform duration-300"></i>
-                    </button>
-                    <div class="accordion-content products-content space-y-1 mt-2 max-h-96 overflow-hidden transition-all duration-300">
-                        <a href="{{ route('products.index') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg {{ request()->routeIs('products.index') ? 'bg-indigo-800' : 'hover:bg-indigo-800' }} transition-colors text-sm">
-                            <i class="fas fa-list text-xs"></i>
-                            <span>All Products</span>
-                        </a>
-                        <a href="{{ route('products.create') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg {{ request()->routeIs('products.create') ? 'bg-indigo-800' : 'hover:bg-indigo-800' }} transition-colors text-sm">
-                            <i class="fas fa-plus text-xs"></i>
-                            <span>Add Product</span>
-                        </a>
-                        <a href="{{ route('products.expired') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg {{ request()->routeIs('products.expired') ? 'bg-indigo-800' : 'hover:bg-indigo-800' }} transition-colors text-sm">
-                            <i class="fas fa-exclamation-triangle text-xs text-red-400"></i>
-                            <span>Expired Products</span>
-                        </a>
-                        <a href="{{ route('products.expiring-soon') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg {{ request()->routeIs('products.expiring-soon') ? 'bg-indigo-800' : 'hover:bg-indigo-800' }} transition-colors text-sm">
-                            <i class="fas fa-clock text-xs text-yellow-400"></i>
-                            <span>Expiring Soon</span>
-                        </a>
+             <a href="{{route('invoices.index')}}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800">
+                    <i class="fas fa-file-invoice-dollar text-lg"></i>
+                    <span>Invoices/credit sales</span>
+            </a>
+                <!-- Products -->
+                <div class="space-y-1">
+                    <div class="flex items-center space-x-3 p-3 text-indigo-300 font-semibold">
+                        <i class="fas fa-box text-lg"></i>
+                        <span>Products</span>
                     </div>
                 </div>
 

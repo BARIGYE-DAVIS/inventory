@@ -76,24 +76,25 @@
                     <span>NEW SALE</span>
                 </a>
 
-                <!-- SALES SECTION (Accordion) -->
-                <div class="accordion-group mt-4">
-                    <button type="button" class="accordion-toggle flex items-center justify-between w-full p-3 rounded-lg text-left bg-yellow-700 hover:bg-yellow-600 transition-colors font-semibold" data-accordion="sales">
-                        <span class="flex items-center space-x-3">
-                            <i class="fas fa-receipt text-lg"></i>
-                            <span>My Sales</span>
-                        </span>
-                        <i class="fas fa-chevron-down transition-transform duration-300"></i>
-                    </button>
-                    <div class="accordion-content sales-content space-y-1 mt-2 max-h-96 overflow-hidden transition-all duration-300">
-                        <a href="{{ route('sales.index') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-yellow-800 transition-colors text-sm">
-                            <i class="fas fa-list text-xs"></i>
-                            <span>All My Sales</span>
-                        </a>
-                        <a href="{{ route('sales.today') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-yellow-800 transition-colors text-sm">
-                            <i class="fas fa-calendar-day text-xs"></i>
-                            <span>Today's Sales</span>
-                        </a>
+                <!-- ... existing sidebar code ... -->
+
+<li>
+    <a href="{{ route('cashier.invoices.index') }}"
+       class="flex items-center px-4 py-2 text-gray-700 rounded-md hover:bg-indigo-600 hover:text-white transition group {{ request()->routeIs('cashier.invoices.*') ? 'bg-indigo-100 text-indigo-700 font-bold' : '' }}">
+        <i class="fas fa-file-invoice-dollar text-indigo-500 group-hover:text-white w-5"></i>
+        <span class="ml-3">Invoices</span>
+    </a>
+</li>
+
+<!-- ... further sidebar code ... -->
+
+
+
+                <!-- My Sales -->
+                <div class="space-y-1">
+                    <div class="flex items-center space-x-3 p-3 text-yellow-200 font-semibold">
+                        <i class="fas fa-receipt text-lg"></i>
+                        <span>My Sales</span>
                     </div>
                 </div>
 
