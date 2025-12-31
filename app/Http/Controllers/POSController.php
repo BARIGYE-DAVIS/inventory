@@ -2,49 +2,35 @@
 
 namespace App\Http\Controllers;
 use App\Services\MailerService;
-use App\Models\{Product, Customer, Sale, SaleItem, Category, Inventory, Location};
+use App\Models\{Product, Customer, Sale, SaleItem, Category, Inventory};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Auth, DB, Mail, Log};
-use App\Mail\SaleReceiptMail; // ✅ ADD THIS
+use App\Mail\SaleReceiptMail;
 
 class POSController extends Controller
 {
     /**
-     * Show POS interface - different view based on role
+     * Show POS interface
      */
     public function index()
     {
         $user = Auth::user();
         $businessId = $user->business_id;
-        $userRole = $user->role->name;
-
-        // Get user's assigned location or all locations for owner
-        $locationId = null;
-        if ($userRole !== 'owner' && $user->location_id) {
-            $locationId = $user->location_id;
-        }
 
         // Get active inventory items with stock
-        $query = Inventory::with('product.category', 'location')
+        $inventoryItems = Inventory::with('product.category')
             ->where('business_id', $businessId)
             ->whereHas('product', function($q) {
                 $q->where('is_active', true);
             })
-            ->where('quantity', '>', 0);
-
-        if ($locationId) {
-            $query->where('location_id', $locationId);
-        }
-
-        // Get inventory grouped by product
-        $inventoryItems = $query->get();
+            ->where('quantity', '>', 0)
+            ->get();
         
         // Extract products for compatibility
         $products = $inventoryItems->map(function($item) {
             $product = $item->product;
             $product->inventory_id = $item->id;
-            $product->location_id = $item->location_id;
-            $product->quantity = $item->quantity; // Use inventory quantity
+            $product->quantity = $item->quantity;
             return $product;
         });
 
@@ -63,26 +49,16 @@ class POSController extends Controller
             ->orderBy('name')
             ->get();
 
-        // Get user's location info
-        $userLocation = $user->location_id ? Location::find($user->location_id) : null;
-
-        // Load different view based on role
-        if ($userRole === 'cashier') {
-            return view('cashier.pos', compact('products', 'categories', 'customers', 'userLocation'));
-        }
-
-        return view('pos.index', compact('products', 'categories', 'customers', 'userLocation'));
+        return view('pos.index', compact('products', 'categories', 'customers'));
     }
 
     /**
      * Process sale transaction
-     * ✅ FIXED: Now uses Inventory table and respects user location
      */
     public function process(Request $request)
     {
         $user = Auth::user();
         $businessId = $user->business_id;
-        $userRole = $user->role->name;
 
         // Validation rules
         $rules = [
@@ -180,27 +156,10 @@ class POSController extends Controller
             foreach ($validated['items'] as $item) {
                 $product = Product::findOrFail($item['product_id']);
 
-                // Determine which location to pull from
-                if ($userRole !== 'owner' && $user->location_id) {
-                    // Cashier/Staff: Pull from their assigned location
-                    $inventory = Inventory::where('business_id', $businessId)
-                        ->where('product_id', $item['product_id'])
-                        ->where('location_id', $user->location_id)
-                        ->first();
-                } else {
-                    // Owner: Pull from default/main location
-                    $location = Location::where('business_id', $businessId)
-                        ->where('is_main', true)
-                        ->first();
-                    $locationId = $location ? $location->id : Inventory::where('business_id', $businessId)
-                        ->where('product_id', $item['product_id'])
-                        ->value('location_id');
-                    
-                    $inventory = Inventory::where('business_id', $businessId)
-                        ->where('product_id', $item['product_id'])
-                        ->where('location_id', $locationId)
-                        ->first();
-                }
+                // Get inventory for this product
+                $inventory = Inventory::where('business_id', $businessId)
+                    ->where('product_id', $item['product_id'])
+                    ->first();
 
                 if (!$inventory || $inventory->quantity < $item['quantity']) {
                     $availableQty = $inventory ? $inventory->quantity : 0;
@@ -218,22 +177,16 @@ class POSController extends Controller
 
                 // Update inventory stock
                 $inventory->removeStock($item['quantity']);
-
-                // Also update product total quantity for backward compatibility
-                $product->decrement('quantity', $item['quantity']);
             }
 
             DB::commit();
 
-            // ✅ SEND EMAIL RECEIPT (After successful sale)
+            // Send email receipt
             $emailMessage = '';
             if ($sale->customer && $sale->customer->email) {
                 try {
-                    // Load relationships needed for email
                     $sale->load(['business', 'customer', 'items.product', 'user']);
-                    
-                           MailerService::sendSaleReceipt($sale);
-                    
+                    MailerService::sendSaleReceipt($sale);
                     $emailMessage = ' | Receipt sent to ' . $sale->customer->email;
                     
                     Log::info('Receipt email sent successfully', [
@@ -244,9 +197,7 @@ class POSController extends Controller
                     Log::error('Failed to send receipt email', [
                         'sale_id' => $sale->id,
                         'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString(),
                     ]);
-                    // Don't fail the sale if email fails
                     $emailMessage = ' | (Email failed to send)';
                 }
             }
@@ -273,13 +224,12 @@ class POSController extends Controller
     }
 
     /**
-     * Get product details with location-aware stock
+     * Get product details
      */
     public function getProduct($id)
     {
         $user = Auth::user();
         $businessId = $user->business_id;
-        $userRole = $user->role->name;
 
         $product = Product::where('id', $id)
             ->where('business_id', $businessId)
@@ -291,15 +241,10 @@ class POSController extends Controller
             return response()->json(['error' => 'Product not found'], 404);
         }
 
-        // Get inventory quantity for user's location or all locations
-        if ($userRole !== 'owner' && $user->location_id) {
-            $stock = Inventory::where('business_id', $businessId)
-                ->where('product_id', $id)
-                ->where('location_id', $user->location_id)
-                ->value('quantity') ?? 0;
-        } else {
-            $stock = $product->quantity; // Total stock
-        }
+        // Get inventory quantity
+        $stock = Inventory::where('business_id', $businessId)
+            ->where('product_id', $id)
+            ->value('quantity') ?? 0;
 
         return response()->json([
             'id' => $product->id,
@@ -319,20 +264,11 @@ class POSController extends Controller
     public function receipt($id)
     {
         $user = Auth::user();
-        $userRole = $user->role->name;
 
         $sale = Sale::where('id', $id)
             ->where('business_id', $user->business_id)
             ->with(['customer', 'user', 'items.product', 'user.business'])
             ->firstOrFail();
-
-        if ($userRole === 'cashier' && $sale->user_id !== $user->id) {
-            abort(403, 'You can only view your own sales.');
-        }
-
-        if ($userRole === 'cashier') {
-            return view('cashier.receipt', compact('sale'));
-        }
 
         return view('pos.receipt', compact('sale'));
     }
@@ -343,16 +279,11 @@ class POSController extends Controller
     public function printReceipt($id)
     {
         $user = Auth::user();
-        $userRole = $user->role->name;
 
         $sale = Sale::where('id', $id)
             ->where('business_id', $user->business_id)
             ->with(['customer', 'user', 'items.product', 'user.business'])
             ->firstOrFail();
-
-        if ($userRole === 'cashier' && $sale->user_id !== $user->id) {
-            abort(403);
-        }
 
         return view('pos.receipt-print', compact('sale'));
     }

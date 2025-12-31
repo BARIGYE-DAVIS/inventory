@@ -245,34 +245,6 @@ class Product extends Model
         };
     }
 
-    /**
-     * Get stock for a specific location
-     */
-    public function getStockAtLocation($locationId): float
-    {
-        return (float) $this->inventory()
-            ->where('location_id', $locationId)
-            ->value('quantity') ?? 0;
-    }
-
-    /**
-     * Get stock summary across all locations
-     */
-    public function getStockByLocation()
-    {
-        return $this->inventory()
-            ->with('location')
-            ->get()
-            ->map(function($inventory) {
-                return [
-                    'location_id' => $inventory->location_id,
-                    'location_name' => $inventory->location->name,
-                    'quantity' => $inventory->quantity,
-                    'value' => $inventory->getStockValue(),
-                ];
-            });
-    }
-
     // ========================================
     // PRICING METHODS
     // ========================================

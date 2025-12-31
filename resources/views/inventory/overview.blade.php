@@ -12,22 +12,6 @@
         <!-- Filters -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Location Filter -->
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        <i class="fas fa-map-marker-alt text-indigo-600 mr-2"></i>Select Location
-                    </label>
-                    <select id="locationFilter" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-transparent">
-                        <option value="">-- All Locations --</option>
-                        @foreach($locations as $location)
-                            <option value="{{ $location->id }}" {{ $selectedLocation == $location->id ? 'selected' : '' }}>
-                                {{ $location->name }}
-                                @if($location->is_main) (Main) @endif
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
                 <!-- Product Filter -->
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
@@ -44,27 +28,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Location Summary Card -->
-        @if($currentLocation)
-        <div class="bg-gradient-to-r from-indigo-600 to-indigo-800 text-white rounded-lg shadow-lg p-6 mb-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h2 class="text-2xl font-bold">{{ $currentLocation->name }}</h2>
-                    @if($currentLocation->is_main)
-                        <span class="inline-block mt-2 px-3 py-1 bg-indigo-400 rounded-full text-sm font-semibold">Main Location</span>
-                    @endif
-                    @if($currentLocation->address)
-                        <p class="text-indigo-100 mt-2">{{ $currentLocation->address }}</p>
-                    @endif
-                </div>
-                <div class="text-right">
-                    <p class="text-indigo-100 text-sm">Total Products</p>
-                    <p class="text-4xl font-bold">{{ count($inventoryOverview) }}</p>
-                </div>
-            </div>
-        </div>
-        @endif
 
         <!-- Inventory Overview Table -->
         <div class="bg-white rounded-lg shadow-md overflow-hidden">
@@ -127,7 +90,7 @@
                                     <p class="text-xs text-gray-500">Cost: ₱{{ number_format($item['cost_value'], 2) }}</p>
                                 </td>
                                 <td class="px-6 py-4 text-center">
-                                    <a href="{{ route('inventory.overview', ['location' => $selectedLocation, 'product' => $item['id']]) }}" class="inline-block px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors text-sm font-medium">
+                                    <a href="{{ route('inventory.overview', ['product' => $item['id']]) }}" class="inline-block px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors text-sm font-medium">
                                         <i class="fas fa-eye mr-1"></i>Details
                                     </a>
                                 </td>
@@ -212,21 +175,14 @@
 </div>
 
 <script>
-    document.getElementById('locationFilter').addEventListener('change', function() {
-        const location = this.value;
-        const product = document.getElementById('productFilter').value;
-        const url = new URL(window.location.href);
-        url.searchParams.set('location', location);
-        if (product) url.searchParams.set('product', product);
-        window.location.href = url.toString();
-    });
-
     document.getElementById('productFilter').addEventListener('change', function() {
         const product = this.value;
-        const location = document.getElementById('locationFilter').value;
         const url = new URL(window.location.href);
-        if (location) url.searchParams.set('location', location);
-        url.searchParams.set('product', product);
+        if (product) {
+            url.searchParams.set('product', product);
+        } else {
+            url.searchParams.delete('product');
+        }
         window.location.href = url.toString();
     });
 </script>

@@ -18,7 +18,6 @@ class Inventory extends Model
     protected $fillable = [
         'business_id',
         'product_id',
-        'location_id',
         'quantity',
     ];
 
@@ -39,11 +38,6 @@ class Inventory extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
-    }
-
-    public function location(): BelongsTo
-    {
-        return $this->belongsTo(Location::class);
     }
 
     // ========================================
@@ -185,14 +179,6 @@ class Inventory extends Model
         return $query->where('inventory.quantity', '>', 0);
     }
 
-    /**
-     * Scope: By location
-     */
-    public function scopeByLocation($query, $locationId)
-    {
-        return $query->where('location_id', $locationId);
-    }
-
     // ========================================
     // STATIC METHODS
     // ========================================
@@ -200,74 +186,16 @@ class Inventory extends Model
     /**
      * Get or create inventory record
      */
-    public static function getOrCreate($businessId, $productId, $locationId)
+    public static function getOrCreate($businessId, $productId)
     {
         return static::firstOrCreate(
             [
                 'business_id' => $businessId,
                 'product_id' => $productId,
-                'location_id' => $locationId,
             ],
             [
                 'quantity' => 0,
             ]
         );
-    }
-
-    /**
-     * Transfer stock between locations
-     */
-    public static function transferStock($businessId, $productId, $fromLocationId, $toLocationId, $quantity)
-    {
-        if ($fromLocationId == $toLocationId) {
-            throw new \Exception("Cannot transfer to the same location");
-        }
-
-        // Get inventory records
-        $fromInventory = static::getOrCreate($businessId, $productId, $fromLocationId);
-        $toInventory = static::getOrCreate($businessId, $productId, $toLocationId);
-
-        // Check if enough stock in source location
-        if ($fromInventory->quantity < $quantity) {
-            throw new \Exception("Insufficient stock in source location. Available: {$fromInventory->quantity}");
-        }
-
-        // Perform transfer
-        $fromInventory->removeStock($quantity);
-        $toInventory->addStock($quantity);
-
-        return [
-            'from' => $fromInventory,
-            'to' => $toInventory,
-        ];
-    }
-
-    /**
-     * Get total stock across all locations for a product
-     */
-    public static function getTotalStock($businessId, $productId)
-    {
-        return static::where('business_id', $businessId)
-                     ->where('product_id', $productId)
-                     ->sum('quantity');
-    }
-
-    /**
-     * Get inventory summary by location
-     */
-    public static function getSummaryByLocation($businessId)
-    {
-        return static::where('inventory.business_id', $businessId)
-                     ->join('locations', 'inventory.location_id', '=', 'locations.id')
-                     ->join('products', 'inventory.product_id', '=', 'products.id')
-                     ->groupBy('locations.id', 'locations.name')
-                     ->select(
-                         'locations.id',
-                         'locations.name',
-                         \DB::raw('COUNT(inventory.id) as product_count'),
-                         \DB::raw('SUM(inventory.quantity) as total_quantity'),
-                         \DB::raw('SUM(inventory.quantity * products.cost_price) as total_value')
-                     )
-                     ->get();
     }
 }

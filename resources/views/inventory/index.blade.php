@@ -9,33 +9,10 @@
 @section('content')
 <div class="space-y-6">
     
-    <!-- Location Selector -->
-    @if($locations->count() > 1)
-    <div class="bg-white rounded-xl shadow-lg p-4">
-        <h3 class="text-sm font-semibold text-gray-700 mb-3">Select Location</h3>
-        <div class="flex flex-wrap gap-2">
-            <a href="{{ route('inventory.index') }}" 
-               class="px-4 py-2 rounded-lg transition 
-               @if(!$selectedLocation) bg-indigo-600 text-white @else bg-gray-100 text-gray-700 hover:bg-gray-200 @endif">
-                <i class="fas fa-globe mr-1"></i>All Locations
-            </a>
-            @foreach($locations as $location)
-            <a href="{{ route('inventory.index', ['location' => $location->id]) }}"
-               class="px-4 py-2 rounded-lg transition 
-               @if($selectedLocation == $location->id) bg-indigo-600 text-white @else bg-gray-100 text-gray-700 hover:bg-gray-200 @endif">
-                <i class="fas fa-map-marker-alt mr-1"></i>{{ $location->name }}
-                @if($location->is_main)<span class="text-xs ml-1">(Main)</span>@endif
-            </a>
-            @endforeach
-        </div>
-    </div>
-    @endif
-
-    <!-- Summary Cards - Current Location -->
-    @if($currentLocation)
+    <!-- Summary Cards -->
     <div>
         <h3 class="text-sm font-semibold text-gray-700 mb-3">
-            <i class="fas fa-map-marker-alt mr-2"></i>{{ $currentLocation->name }} - Inventory Overview
+            <i class="fas fa-boxes mr-2"></i>Inventory Overview
         </h3>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
             <!-- Total Products -->
@@ -91,45 +68,11 @@
             </div>
         </div>
     </div>
-    @endif
-
-    <!-- Global Summary - All Locations -->
-    @if($locations->count() > 1)
-    <div class="border-t pt-6">
-        <h3 class="text-sm font-semibold text-gray-700 mb-3">
-            <i class="fas fa-globe mr-2"></i>Global Inventory (All Locations)
-        </h3>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div class="bg-blue-50 rounded-xl p-6">
-                <p class="text-sm text-gray-600">Total Products</p>
-                <p class="text-2xl font-bold text-blue-600 mt-2">{{ $globalTotalProducts }}</p>
-            </div>
-            <div class="bg-yellow-50 rounded-xl p-6">
-                <p class="text-sm text-gray-600">Low Stock Items</p>
-                <p class="text-2xl font-bold text-yellow-600 mt-2">{{ $globalLowStockCount }}</p>
-            </div>
-            <div class="bg-red-50 rounded-xl p-6">
-                <p class="text-sm text-gray-600">Out of Stock</p>
-                <p class="text-2xl font-bold text-red-600 mt-2">{{ $globalOutOfStockCount }}</p>
-            </div>
-            <div class="bg-green-50 rounded-xl p-6">
-                <p class="text-sm text-gray-600">Total Value</p>
-                <p class="text-2xl font-bold text-green-600 mt-2">UGX {{ number_format($globalTotalValue, 0) }}</p>
-            </div>
-        </div>
-    </div>
-    @endif
 
     <!-- Inventory Table -->
     <div class="bg-white rounded-xl shadow-lg p-6">
         <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold text-gray-800">
-                @if($currentLocation)
-                    {{ $currentLocation->name }} - Stock
-                @else
-                    Inventory
-                @endif
-            </h2>
+            <h2 class="text-2xl font-bold text-gray-800">Product Inventory</h2>
             <div class="flex space-x-2">
                 <a href="{{ route('products.create') }}" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
                     <i class="fas fa-plus mr-2"></i>Add Product
@@ -205,11 +148,7 @@
                     @empty
                     <tr>
                         <td colspan="8" class="px-4 py-8 text-center text-gray-500">
-                            @if($currentLocation)
-                                No products in {{ $currentLocation->name }}
-                            @else
-                                No inventory data available
-                            @endif
+                            No inventory data available
                         </td>
                     </tr>
                     @endforelse
