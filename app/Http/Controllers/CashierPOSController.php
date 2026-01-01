@@ -119,6 +119,11 @@ class CashierPOSController extends Controller
             foreach ($items as $item) {
                 $product = Product::findOrFail($item['id']);
 
+                // Check if product is out of stock
+                if ($product->quantity <= 0) {
+                    throw new \Exception("{$product->name} is out of stock and cannot be sold.");
+                }
+
                 // Check stock availability
                 if ($product->quantity < $item['quantity']) {
                     throw new \Exception("Insufficient stock for {$product->name}. Available: {$product->quantity}");

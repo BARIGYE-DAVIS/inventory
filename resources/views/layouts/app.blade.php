@@ -12,14 +12,113 @@
      @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         .sidebar {
-            transition: transform 0.3s ease-in-out;
+            transition: width 0.3s ease-in-out;
+            width: 16rem; /* w-64 = 16rem */
         }
+        
+        .sidebar.collapsed {
+            width: 5rem !important; /* Narrow icon-only mode */
+        }
+        
+        .sidebar.collapsed .sidebar-text {
+            display: none !important;
+        }
+        
+        .sidebar.collapsed .sidebar-icon-only {
+            justify-content: center !important;
+        }
+        
+        /* Show text on sidebar hover when collapsed */
+        .sidebar.collapsed:hover {
+            width: 16rem !important;
+            position: fixed;
+            z-index: 50;
+        }
+        
+        .sidebar.collapsed:hover .sidebar-text {
+            display: inline !important;
+        }
+        
+        /* Main content expands when sidebar collapses */
+        .main-content {
+            transition: margin-left 0.3s ease-in-out;
+        }
+
         @media (max-width: 768px) {
             .sidebar.hidden-mobile {
                 transform: translateX(-100%);
             }
         }
         .dropdown:hover .dropdown-menu {
+            display: block;
+        }
+        /* Accordion Styles */
+        .accordion-header {
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.3s ease;
+        }
+        .accordion-header:hover {
+            background-color: rgba(79, 70, 229, 0.3);
+        }
+        .accordion-icon {
+            transition: transform 0.3s ease;
+        }
+        .accordion-icon.collapsed {
+            transform: rotate(-90deg);
+        }
+        .accordion-content {
+            max-height: 500px;
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            opacity: 1;
+        }
+        .accordion-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
+        
+        /* Fullscreen Mode */
+        body.fullscreen-mode {
+            overflow: hidden;
+        }
+        
+        body.fullscreen-mode header {
+            display: none;
+        }
+        
+        body.fullscreen-mode .flex-1 {
+            width: 100%;
+        }
+        
+        body.fullscreen-mode main {
+            height: 100vh;
+            padding: 0 !important;
+        }
+        
+        /* Floating exit button in fullscreen mode */
+        .fullscreen-exit-btn {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            padding: 12px 16px;
+            background-color: rgba(239, 68, 68, 0.9);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+        
+        .fullscreen-exit-btn:hover {
+            background-color: rgba(220, 38, 38, 1);
+        }
+        
+        body.fullscreen-mode .fullscreen-exit-btn {
             display: block;
         }
     </style>
@@ -35,175 +134,240 @@
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
                         <i class="fas fa-boxes text-2xl text-yellow-400"></i>
-                        <span class="ml-2 text-lg font-bold truncate">{{ auth()->user()->business->name }}</span>
+                        <span class="sidebar-text ml-2 text-lg font-bold truncate">{{ auth()->user()->business->name }}</span>
                     </div>
-                    <button onclick="toggleSidebar()" class="md:hidden text-white">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
+                    <div class="flex items-center space-x-2">
+                        <!-- Toggle Sidebar Collapse Button (Desktop Only) -->
+                        <button onclick="toggleSidebarCollapse()" class="hidden md:block text-white hover:text-yellow-400 transition">
+                            <i class="fas fa-chevron-left text-lg"></i>
+                        </button>
+                        <!-- Close Sidebar Button (Mobile Only) -->
+                        <button onclick="toggleSidebar()" class="md:hidden text-white">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
                 </div>
-                <p class="text-xs text-indigo-300 mt-1">{{ auth()->user()->role->display_name }}</p>
+                <p class="sidebar-text text-xs text-indigo-300 mt-1">{{ auth()->user()->role->display_name }}</p>
             </div>
 
             <!-- Navigation -->
-            <nav class="p-4 space-y-2">
-                <a href="{{ route('dashboard') }}" class="flex items-center space-x-3 p-3 rounded-lg {{ request()->routeIs('dashboard') ? 'bg-indigo-800' : 'hover:bg-indigo-800' }}">
-                    <i class="fas fa-home text-lg"></i>
-                    <span>Dashboard</span>
+            <nav class="p-4 space-y-1">
+                <!-- Dashboard -->
+                <a href="{{ route('dashboard') }}" class="flex items-center space-x-3 p-3 rounded-lg {{ request()->routeIs('dashboard') ? 'bg-indigo-800' : 'hover:bg-indigo-800' }} sidebar-icon-only">
+                    <i class="fas fa-home text-lg flex-shrink-0"></i>
+                    <span class="sidebar-text">Dashboard</span>
                 </a>
 
-
-             <a href="{{ route('profit.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-700">
-            <i class="fas fa-chart-pie text-lg"></i>
-         <span>Profit Report</span>
-        </a>
-      
-
-                <a href="{{ route('pos.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800">
-                    <i class="fas fa-cash-register text-lg text-green-400"></i>
-                    <span>POS - New Sale</span>
+                <!-- Quick Access -->
+                <a href="{{ route('pos.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800 text-green-300 font-semibold sidebar-icon-only">
+                    <i class="fas fa-cash-register text-lg flex-shrink-0"></i>
+                    <span class="sidebar-text">POS - New Sale</span>
                 </a>
-             <a href="{{route('invoices.index')}}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800">
-                    <i class="fas fa-file-invoice-dollar text-lg"></i>
-                    <span>Invoices/credit sales</span>
-            </a>
-                <!-- Products -->
-                <div class="space-y-1">
-                    <div class="flex items-center space-x-3 p-3 text-indigo-300 font-semibold">
-                        <i class="fas fa-box text-lg"></i>
-                        <span>Products</span>
+
+                <!-- Products Accordion -->
+                <div class="accordion-group">
+                    <div onclick="toggleAccordion(event, 'products')" class="accordion-header flex items-center justify-between space-x-3 p-3 rounded-lg {{ request()->routeIs('products.*') ? 'bg-indigo-700' : '' }} sidebar-icon-only">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-box text-lg flex-shrink-0"></i>
+                            <span class="sidebar-text">Products</span>
+                        </div>
+                        <i class="fas fa-chevron-down accordion-icon text-xs sidebar-text {{ request()->routeIs('products.*') ? '' : 'collapsed' }}"></i>
                     </div>
-                    <a href="{{ route('products.index') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg {{ request()->routeIs('products.index') ? 'bg-indigo-800' : 'hover:bg-indigo-800' }}">
-                        <i class="fas fa-list text-sm"></i>
-                        <span>All Products</span>
-                    </a>
-                    <a href="{{ route('products.create') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg {{ request()->routeIs('products.create') ? 'bg-indigo-800' : 'hover:bg-indigo-800' }}">
-                        <i class="fas fa-plus text-sm"></i>
-                        <span>Add Product</span>
-                    </a>
-                    <a href="{{ route('products.expired') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg {{ request()->routeIs('products.expired') ? 'bg-indigo-800' : 'hover:bg-indigo-800' }}">
-                        <i class="fas fa-exclamation-triangle text-sm text-red-400"></i>
-                        <span>Expired Products</span>
-                    </a>
-                    <a href="{{ route('products.expiring-soon') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg {{ request()->routeIs('products.expiring-soon') ? 'bg-indigo-800' : 'hover:bg-indigo-800' }}">
-                        <i class="fas fa-clock text-sm text-yellow-400"></i>
-                        <span>Expiring Soon</span>
-                    </a>
+                    <div id="products" class="accordion-content {{ request()->routeIs('products.*') ? '' : 'collapsed' }} space-y-1">
+                        <a href="{{ route('products.index') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg {{ request()->routeIs('products.index') ? 'bg-indigo-800' : 'hover:bg-indigo-800' }}">
+                            <i class="fas fa-list text-sm flex-shrink-0"></i>
+                            <span class="sidebar-text">All Products</span>
+                        </a>
+                        <a href="{{ route('products.create') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg {{ request()->routeIs('products.create') ? 'bg-indigo-800' : 'hover:bg-indigo-800' }}">
+                            <i class="fas fa-plus text-sm flex-shrink-0"></i>
+                            <span class="sidebar-text">Add Product</span>
+                        </a>
+                        <a href="{{ route('products.expired') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg {{ request()->routeIs('products.expired') ? 'bg-indigo-800' : 'hover:bg-indigo-800' }}">
+                            <i class="fas fa-exclamation-triangle text-sm text-red-400 flex-shrink-0"></i>
+                            <span class="sidebar-text">Expired Products</span>
+                        </a>
+                        <a href="{{ route('products.expiring-soon') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg {{ request()->routeIs('products.expiring-soon') ? 'bg-indigo-800' : 'hover:bg-indigo-800' }}">
+                            <i class="fas fa-clock text-sm text-yellow-400 flex-shrink-0"></i>
+                            <span class="sidebar-text">Expiring Soon</span>
+                        </a>
+                    </div>
                 </div>
 
-                <!-- Sales -->
-                <div class="space-y-1">
-                    <div class="flex items-center space-x-3 p-3 text-indigo-300 font-semibold">
-                        <i class="fas fa-shopping-cart text-lg"></i>
-                        <span>Sales</span>
+                <!-- Sales Accordion -->
+                <div class="accordion-group">
+                    <div onclick="toggleAccordion(event, 'sales')" class="accordion-header flex items-center justify-between space-x-3 p-3 rounded-lg {{ request()->routeIs('sales.*') ? 'bg-indigo-700' : '' }} sidebar-icon-only">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-shopping-cart text-lg flex-shrink-0"></i>
+                            <span class="sidebar-text">Sales</span>
+                        </div>
+                        <i class="fas fa-chevron-down accordion-icon text-xs sidebar-text {{ request()->routeIs('sales.*') ? '' : 'collapsed' }}"></i>
                     </div>
-                    <a href="{{ route('sales.index') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
-                        <i class="fas fa-list text-sm"></i>
-                        <span>All Sales</span>
-                    </a>
-                    <a href="{{ route('sales.today') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
-                        <i class="fas fa-calendar-day text-sm"></i>
-                        <span>Today's Sales</span>
-                    </a>
-                    <a href="{{ route('sales.weekly') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
-                        <i class="fas fa-calendar-week text-sm"></i>
-                        <span>Weekly Sales</span>
-                    </a>
-                    <a href="{{ route('sales.monthly') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
-                        <i class="fas fa-calendar-alt text-sm"></i>
-                        <span>Monthly Sales</span>
-                    </a>
+                    <div id="sales" class="accordion-content {{ request()->routeIs('sales.*') ? '' : 'collapsed' }} space-y-1">
+                        <a href="{{ route('sales.index') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
+                            <i class="fas fa-list text-sm flex-shrink-0"></i>
+                            <span class="sidebar-text">All Sales</span>
+                        </a>
+                        <a href="{{ route('sales.today') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
+                            <i class="fas fa-calendar-day text-sm flex-shrink-0"></i>
+                            <span class="sidebar-text">Today's Sales</span>
+                        </a>
+                        <a href="{{ route('sales.weekly') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
+                            <i class="fas fa-calendar-week text-sm flex-shrink-0"></i>
+                            <span class="sidebar-text">Weekly Sales</span>
+                        </a>
+                        <a href="{{ route('sales.monthly') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
+                            <i class="fas fa-calendar-alt text-sm flex-shrink-0"></i>
+                            <span class="sidebar-text">Monthly Sales</span>
+                        </a>
+                    </div>
                 </div>
 
-                <a href="{{ route('inventory.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800">
-                    <i class="fas fa-warehouse text-lg"></i>
-                    <span>Inventory</span>
+                <!-- Invoices/Credit Sales -->
+                <a href="{{route('invoices.index')}}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800 sidebar-icon-only">
+                    <i class="fas fa-file-invoice-dollar text-lg flex-shrink-0"></i>
+                    <span class="sidebar-text">Invoices/Credit Sales</span>
                 </a>
 
-                <a href="{{ route('suppliers.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800">
-                    <i class="fas fa-truck text-lg"></i>
-                    <span>Suppliers</span>
-                </a>
-
-                <a href="{{ route('customers.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800">
-                    <i class="fas fa-users text-lg"></i>
-                    <span>Customers</span>
-                </a>
-
-{{-- Owner Expenses links --}}
-<div class="space-y-1">
-  <div class="flex items-center space-x-3 p-3 text-indigo-300 font-semibold">
-    <i class="fas fa-wallet text-lg"></i><span>Expenses</span>
-  </div>
-  <a href="{{ route('expenses.create') }}" class="block p-3 pl-12 hover:bg-indigo-800">Record Expense</a>
-  <a href="{{ route('expenses.index') }}" class="block p-3 pl-12 hover:bg-indigo-800">All Expenses</a>
-  <a href="{{ route('expenses.today') }}" class="block p-3 pl-12 hover:bg-indigo-800">Today's Expenses</a>
-  <a href="{{ route('expenses.weekly') }}" class="block p-3 pl-12 hover:bg-indigo-800">Weekly</a>
-  <a href="{{ route('expenses.monthly') }}" class="block p-3 pl-12 hover:bg-indigo-800">Monthly</a>
-</div>
-                
-                <!-- Reports -->
-                <div class="space-y-1">
-                    <div class="flex items-center space-x-3 p-3 text-indigo-300 font-semibold">
-                        <i class="fas fa-chart-bar text-lg"></i>
-                        <span>Reports</span>
+                <!-- Inventory Accordion -->
+                <div class="accordion-group">
+                    <div onclick="toggleAccordion(event, 'inventory')" class="accordion-header flex items-center justify-between space-x-3 p-3 rounded-lg {{ request()->routeIs('inventory.*') ? 'bg-indigo-700' : '' }} sidebar-icon-only">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-warehouse text-lg flex-shrink-0"></i>
+                            <span class="sidebar-text">Inventory</span>
+                        </div>
+                        <i class="fas fa-chevron-down accordion-icon text-xs sidebar-text {{ request()->routeIs('inventory.*') ? '' : 'collapsed' }}"></i>
                     </div>
+                    <div id="inventory" class="accordion-content {{ request()->routeIs('inventory.*') ? '' : 'collapsed' }} space-y-1">
+                        <a href="{{ route('inventory.index') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg {{ request()->routeIs('inventory.index') ? 'bg-indigo-800' : 'hover:bg-indigo-800' }}">
+                            <i class="fas fa-boxes text-sm flex-shrink-0"></i>
+                            <span class="sidebar-text">Inventory Management</span>
+                        </a>
+                        <a href="{{ route('inventory.activities') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg {{ request()->routeIs('inventory.activities') ? 'bg-indigo-800' : 'hover:bg-indigo-800' }}">
+                            <i class="fas fa-history text-sm flex-shrink-0"></i>
+                            <span class="sidebar-text">Inventory Activities</span>
+                        </a>
+                        <a href="{{ route('stock-taking.index') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg {{ request()->routeIs('stock-taking.*') ? 'bg-indigo-800' : 'hover:bg-indigo-800' }}">
+                            <i class="fas fa-list-check text-sm flex-shrink-0"></i>
+                            <span class="sidebar-text">Stock Taking</span>
+                        </a>
+                    </div>
+                </div>
 
-
-                    <a href="{{ route('dashboard.annual') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-700">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Annual Performance</span>
+                <!-- Customers -->
+                <a href="{{ route('customers.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800 sidebar-icon-only">
+                    <i class="fas fa-users text-lg flex-shrink-0"></i>
+                    <span class="sidebar-text">Customers</span>
                 </a>
-                    <a href="{{ route('reports.sales') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
-                        <i class="fas fa-chart-line text-sm"></i>
-                        <span>Sales Report</span>
-                    </a>
-                    <a href="{{ route('reports.products') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
-                        <i class="fas fa-box-open text-sm"></i>
-                        <span>Product Report</span>
-                    </a>
-                    <a href="{{ route('reports.top-selling') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
-                        <i class="fas fa-fire text-sm text-orange-400"></i>
-                        <span>Top Selling</span>
-                    </a>
-                    <a href="{{ route('reports.custom') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
-                        <i class="fas fa-calendar-check text-sm"></i>
-                        <span>Custom Range</span>
-                    </a>
+
+                <!-- Suppliers -->
+                <a href="{{ route('suppliers.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800 sidebar-icon-only">
+                    <i class="fas fa-truck text-lg flex-shrink-0"></i>
+                    <span class="sidebar-text">Suppliers</span>
+                </a>
+
+                <!-- Expenses Accordion -->
+                <div class="accordion-group">
+                    <div onclick="toggleAccordion(event, 'expenses')" class="accordion-header flex items-center justify-between space-x-3 p-3 rounded-lg {{ request()->routeIs('expenses.*') ? 'bg-indigo-700' : '' }} sidebar-icon-only">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-wallet text-lg flex-shrink-0"></i>
+                            <span class="sidebar-text">Expenses</span>
+                        </div>
+                        <i class="fas fa-chevron-down accordion-icon text-xs sidebar-text {{ request()->routeIs('expenses.*') ? '' : 'collapsed' }}"></i>
+                    </div>
+                    <div id="expenses" class="accordion-content {{ request()->routeIs('expenses.*') ? '' : 'collapsed' }} space-y-1">
+                        <a href="{{ route('expenses.create') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
+                            <i class="fas fa-plus text-sm flex-shrink-0"></i>
+                            <span class="sidebar-text">Record Expense</span>
+                        </a>
+                        <a href="{{ route('expenses.index') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
+                            <i class="fas fa-list text-sm flex-shrink-0"></i>
+                            <span class="sidebar-text">All Expenses</span>
+                        </a>
+                        <a href="{{ route('expenses.today') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
+                            <i class="fas fa-calendar-day text-sm flex-shrink-0"></i>
+                            <span class="sidebar-text">Today's Expenses</span>
+                        </a>
+                        <a href="{{ route('expenses.weekly') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
+                            <i class="fas fa-calendar-week text-sm flex-shrink-0"></i>
+                            <span class="sidebar-text">Weekly</span>
+                        </a>
+                        <a href="{{ route('expenses.monthly') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
+                            <i class="fas fa-calendar-alt text-sm flex-shrink-0"></i>
+                            <span class="sidebar-text">Monthly</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Reports Accordion -->
+                <div class="accordion-group">
+                    <div onclick="toggleAccordion(event, 'reports')" class="accordion-header flex items-center justify-between space-x-3 p-3 rounded-lg {{ request()->routeIs('reports.*', 'dashboard.annual', 'profit.*') ? 'bg-indigo-700' : '' }} sidebar-icon-only">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-chart-bar text-lg flex-shrink-0"></i>
+                            <span class="sidebar-text">Reports</span>
+                        </div>
+                        <i class="fas fa-chevron-down accordion-icon text-xs sidebar-text {{ request()->routeIs('reports.*', 'dashboard.annual', 'profit.*') ? '' : 'collapsed' }}"></i>
+                    </div>
+                    <div id="reports" class="accordion-content {{ request()->routeIs('reports.*', 'dashboard.annual', 'profit.*') ? '' : 'collapsed' }} space-y-1">
+                        <a href="{{ route('dashboard.annual') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
+                            <i class="fas fa-chart-line text-sm flex-shrink-0"></i>
+                            <span class="sidebar-text">Annual Performance</span>
+                        </a>
+                        <a href="{{ route('profit.index') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
+                            <i class="fas fa-chart-pie text-sm flex-shrink-0"></i>
+                            <span class="sidebar-text">Profit Report</span>
+                        </a>
+                        <a href="{{ route('reports.sales') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
+                            <i class="fas fa-chart-line text-sm flex-shrink-0"></i>
+                            <span class="sidebar-text">Sales Report</span>
+                        </a>
+                        <a href="{{ route('reports.products') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
+                            <i class="fas fa-box-open text-sm flex-shrink-0"></i>
+                            <span class="sidebar-text">Product Report</span>
+                        </a>
+                        <a href="{{ route('reports.top-selling') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
+                            <i class="fas fa-fire text-sm text-orange-400 flex-shrink-0"></i>
+                            <span class="sidebar-text">Top Selling</span>
+                        </a>
+                        <a href="{{ route('reports.custom') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-indigo-800">
+                            <i class="fas fa-calendar-check text-sm flex-shrink-0"></i>
+                            <span class="sidebar-text">Custom Range</span>
+                        </a>
+                    </div>
                 </div>
 
                 @if(auth()->user()->isOwner() || auth()->user()->role->name === 'manager')
-                <a href="{{ route('staff.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800">
-                    <i class="fas fa-user-tie text-lg"></i>
-                    <span>Staff Management</span>
+                <a href="{{ route('staff.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800 sidebar-icon-only">
+                    <i class="fas fa-user-tie text-lg flex-shrink-0"></i>
+                    <span class="sidebar-text">Staff Management</span>
                 </a>
                 @endif
 
                 @if(auth()->user()->isOwner())
-                <a href="{{ route('settings.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800">
-                    <i class="fas fa-cog text-lg"></i>
-                    <span>Settings</span>
+                <a href="{{ route('settings.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-indigo-800 sidebar-icon-only">
+                    <i class="fas fa-cog text-lg flex-shrink-0"></i>
+                    <span class="sidebar-text">Settings</span>
                 </a>
                 @endif
             </nav>
 
             <!-- User Profile & Logout -->
             <div class="p-4 border-t border-indigo-800 mt-auto">
-            <a href="{{ route('owner.profile.edit') }}" class="flex items-center space-x-3 mb-3 hover:opacity-90 transition">
+            <a href="{{ route('owner.profile.edit') }}" class="flex items-center space-x-3 mb-3 hover:opacity-90 transition sidebar-icon-only">
   @if(auth()->user()?->profile_image)
     <img
       src="{{ route('owner.profile.avatar') }}"
       alt="Profile"
-      class="w-10 h-10 rounded-full object-cover border border-indigo-600"
+      class="w-10 h-10 rounded-full object-cover border border-indigo-600 flex-shrink-0"
     />
   @else
-    <div class="w-10 h-10 bg-indigo-700 rounded-full flex items-center justify-center">
+    <div class="w-10 h-10 bg-indigo-700 rounded-full flex items-center justify-center flex-shrink-0">
       <span class="text-lg font-bold">
         {{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}
       </span>
     </div>
   @endif
 
-  <div class="flex-1">
+  <div class="flex-1 sidebar-text">
     <p class="text-sm font-semibold truncate">{{ auth()->user()->name }}</p>
     <p class="text-xs text-indigo-300 truncate">{{ auth()->user()->email }}</p>
   </div>
@@ -213,9 +377,9 @@
 
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
-                    <button type="submit" class="w-full flex items-center justify-center space-x-2 p-2 bg-red-600 rounded-lg hover:bg-red-700">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span>Logout</span>
+                    <button type="submit" class="w-full flex items-center justify-center space-x-2 p-2 bg-red-600 rounded-lg hover:bg-red-700 sidebar-icon-only">
+                        <i class="fas fa-sign-out-alt flex-shrink-0"></i>
+                        <span class="sidebar-text">Logout</span>
                     </button>
                 </form>
             </div>
@@ -240,10 +404,10 @@
                             {{ now()->format('D, M d, Y') }}
                         </span>
 
-
-
-            
-
+                        <!-- Fullscreen Toggle Button -->
+                        <button onclick="toggleFullscreen()" class="px-2 py-2 text-gray-600 hover:bg-gray-200 rounded-lg transition" title="Fullscreen (ESC to exit)">
+                            <i class="fas fa-expand text-lg"></i>
+                        </button>
 
                         <a href="{{ route('pos.index') }}" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
                             <i class="fas fa-cash-register mr-1"></i>
@@ -298,7 +462,28 @@
         </div>
     </div>
 
+    <!-- Floating Fullscreen Exit Button -->
+    <button class="fullscreen-exit-btn" onclick="toggleFullscreen()" title="Exit Fullscreen (ESC)">
+        <i class="fas fa-compress-alt mr-2"></i> Exit Fullscreen
+    </button>
+
     <script>
+    // ========================================
+    // ✅ ACCORDION TOGGLE
+    // ========================================
+    function toggleAccordion(event, accordionId) {
+        event.preventDefault();
+        const content = document.getElementById(accordionId);
+        const icon = event.currentTarget.querySelector('.accordion-icon');
+        
+        content.classList.toggle('collapsed');
+        icon.classList.toggle('collapsed');
+        
+        // Save accordion state to localStorage
+        const isCollapsed = content.classList.contains('collapsed');
+        localStorage.setItem(`accordion-${accordionId}`, isCollapsed ? 'collapsed' : 'expanded');
+    }
+
     // ========================================
     // ✅ RESPONSIVE SIDEBAR TOGGLE
     // ========================================
@@ -355,7 +540,7 @@
             if (window.innerWidth < 768) {
                 sidebar.classList.add('hidden-mobile');
             } else {
-                sidebar.classList. remove('hidden-mobile');
+                sidebar.classList.remove('hidden-mobile');
             }
             updateBodyScroll();
         }, 250);
@@ -378,6 +563,199 @@
             sidebar.classList.add('hidden-mobile');
             updateBodyScroll();
         }
+    });
+
+    // ✅ TOGGLE SIDEBAR COLLAPSE (Manual)
+    function toggleSidebarCollapse() {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.classList.toggle('collapsed');
+        console.log('Sidebar toggle:', sidebar.classList.contains('collapsed') ? 'collapsed' : 'expanded');
+    }
+
+    // ✅ TOGGLE FULLSCREEN MODE
+    function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.error('Could not enter fullscreen:', err.message);
+            });
+            localStorage.setItem('fullscreenMode', 'true');
+        } else {
+            document.exitFullscreen().catch(err => {
+                console.error('Could not exit fullscreen:', err.message);
+            });
+            localStorage.removeItem('fullscreenMode');
+        }
+    }
+
+    // ✅ AJAX PAGE LOADING
+    function loadPageViaAjax(url) {
+        // Show loading state
+        const main = document.querySelector('main');
+        if (!main) return;
+        
+        main.style.opacity = '0.6';
+        main.style.pointerEvents = 'none';
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.text();
+        })
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            // Update main content
+            const newMain = doc.querySelector('main');
+            if (newMain) {
+                main.innerHTML = newMain.innerHTML;
+            }
+
+            // Update page title
+            const newTitle = doc.querySelector('title');
+            if (newTitle) {
+                document.title = newTitle.textContent;
+            }
+
+            // Update URL
+            window.history.pushState({ path: url }, '', url);
+
+            main.style.opacity = '1';
+            main.style.pointerEvents = 'auto';
+
+            // Re-attach click handlers for new content
+            attachAjaxListeners();
+
+            console.log('Page loaded via AJAX: ' + url);
+        })
+        .catch(error => {
+            console.error('AJAX load failed:', error);
+            main.style.opacity = '1';
+            main.style.pointerEvents = 'auto';
+            // Fallback to normal navigation
+            window.location.href = url;
+        });
+    }
+
+    // ✅ ATTACH AJAX CLICK LISTENERS
+    function attachAjaxListeners() {
+        // Intercept all internal links
+        document.querySelectorAll('a[href]').forEach(link => {
+            // Skip if already has listener
+            if (link.dataset.ajaxAttached) return;
+            
+            const href = link.getAttribute('href');
+            
+            // Skip external links, anchors, special attributes
+            if (!href || href.startsWith('http') || href.startsWith('mailto') || 
+                href === '#' || link.hasAttribute('target') || link.hasAttribute('download')) {
+                return;
+            }
+
+            // Skip logout form
+            if (link.closest('form[action*="logout"]')) {
+                return;
+            }
+
+            link.dataset.ajaxAttached = 'true';
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                loadPageViaAjax(this.getAttribute('href'));
+            });
+        });
+
+        // Intercept form submissions (except logout)
+        document.querySelectorAll('form').forEach(form => {
+            if (form.dataset.ajaxAttached) return;
+            if (form.action.includes('logout')) return;
+
+            form.dataset.ajaxAttached = 'true';
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                const url = this.action;
+
+                fetch(url, {
+                    method: this.method,
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    const newMain = doc.querySelector('main');
+                    const main = document.querySelector('main');
+                    if (newMain && main) {
+                        main.innerHTML = newMain.innerHTML;
+                    }
+
+                    const newTitle = doc.querySelector('title');
+                    if (newTitle) {
+                        document.title = newTitle.textContent;
+                    }
+
+                    window.history.pushState({ path: url }, '', url);
+                    attachAjaxListeners();
+
+                    console.log('Form submitted via AJAX');
+                })
+                .catch(error => {
+                    console.error('Form submission failed:', error);
+                    this.submit(); // Fallback
+                });
+            });
+        });
+    }
+
+    // ✅ HANDLE BROWSER BACK/FORWARD
+    window.addEventListener('popstate', function(event) {
+        if (event.state && event.state.path) {
+            loadPageViaAjax(event.state.path);
+        }
+    });
+
+    // ✅ RESTORE FULLSCREEN ON PAGE LOAD
+    document.addEventListener('DOMContentLoaded', function() {
+        // Attach AJAX listeners to initial page
+        attachAjaxListeners();
+
+        // Restore fullscreen if needed
+        if (localStorage.getItem('fullscreenMode') === 'true') {
+            setTimeout(() => {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log('Auto-fullscreen on load');
+                });
+            }, 300);
+        }
+    });
+
+    // ✅ EXIT FULLSCREEN ON ESC KEY
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && document.fullscreenElement) {
+            document.exitFullscreen();
+            localStorage.removeItem('fullscreenMode');
+        }
+    });
+
+    // ✅ EXPAND SIDEBAR ON HOVER (when collapsed)
+    window.addEventListener('load', function() {
+        const sidebar = document.getElementById('sidebar');
+        
+        sidebar.addEventListener('mouseenter', function() {
+            if (this.classList.contains('collapsed')) {
+                this.classList.remove('collapsed');
+            }
+        });
+        
+        console.log('Sidebar hover listener initialized');
     });
 </script>
 </body>

@@ -172,6 +172,53 @@
     </div>
   </div>
 
+  <!-- Period Closing Status -->
+  <div class="card reveal mb-6" data-delay="500" style="border-left: 4px solid #8b5cf6; background: linear-gradient(to right, #f3f0ff, #fff);">
+    <div class="flex items-center justify-between">
+      <div>
+        <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-boxes text-purple-600 mr-2"></i>Inventory Period Status</h3>
+        @if($lastClosedPeriod)
+          <p class="text-gray-600 text-sm mt-2">
+            <span class="badge bg-green-100 text-green-700 mr-2"><i class="fas fa-check-circle mr-1"></i>Last Closed</span>
+            <strong>{{ $lastClosedPeriod->period_end->format('M d, Y') }}</strong>
+          </p>
+          <p class="text-gray-600 text-xs mt-1">
+            {{-- Show period summary --}}
+            <i class="fas fa-archive text-purple-500 mr-1"></i>{{ $lastClosedPeriod->period_start->format('M d') }} - {{ $lastClosedPeriod->period_end->format('M d, Y') }}
+            | {{ $lastClosedPeriod->closing_stock }} total items locked
+          </p>
+          @if($lastClosedPeriod->variance != 0)
+            <p class="text-sm mt-2">
+              @if($lastClosedPeriod->variance > 0)
+                <span class="badge bg-amber-100 text-amber-700"><i class="fas fa-arrow-up mr-1"></i>Overstock {{ number_format($lastClosedPeriod->variance, 0) }}</span>
+              @else
+                <span class="badge bg-red-100 text-red-700"><i class="fas fa-arrow-down mr-1"></i>Shortage {{ number_format(abs($lastClosedPeriod->variance), 0) }}</span>
+              @endif
+            </p>
+          @endif
+        @else
+          <p class="text-gray-600 text-sm mt-2">
+            <span class="badge bg-yellow-100 text-yellow-700"><i class="fas fa-hourglass-half mr-1"></i>Pending</span>
+            No periods closed yet
+          </p>
+        @endif
+      </div>
+      <div class="text-right">
+        <p class="text-gray-600 text-sm">
+          <i class="fas fa-calendar mr-1 text-purple-600"></i><strong>Next Auto-Close</strong>
+        </p>
+        <p class="text-xl font-bold text-purple-600 mt-1">{{ $nextMonthEnd->format('M d, Y') }}</p>
+        <p class="text-xs text-gray-500 mt-1">11:59 PM</p>
+        <p class="text-xs text-gray-400 mt-2">
+          <i class="fas fa-robot mr-1"></i>Automated
+        </p>
+        <a href="{{ route('inventory.periods') }}" class="inline-block mt-3 px-3 py-2 bg-purple-100 text-purple-700 text-xs font-semibold rounded-lg hover:bg-purple-200 transition">
+          View History →
+        </a>
+      </div>
+    </div>
+  </div>
+
   <!-- Sales Trends -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
     <div class="chart-wrap reveal" data-delay="100">

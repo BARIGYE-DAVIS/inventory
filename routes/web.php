@@ -148,7 +148,20 @@ Route::middleware(['auth'])->group(function () {
     // ========================================
     // INVENTORY (Role checked in controller)
     // ========================================
+    Route::get('/inventory/activities', [InventoryController::class, 'activities'])->name('inventory.activities');
+    Route::get('/inventory/periods', [InventoryController::class, 'periods'])->name('inventory.periods');
     Route::resource('inventory', InventoryController::class);
+
+    // ========================================
+    // STOCK TAKING (Inventory Reconciliation)
+    // ========================================
+    Route::prefix('stock-taking')->name('stock-taking.')->group(function () {
+        Route::get('/', [InventoryController::class, 'stockTakingIndex'])->name('index');
+        Route::get('/session/{id}', [InventoryController::class, 'stockTakingSession'])->name('session');
+        Route::post('/session', [InventoryController::class, 'createSession'])->name('create-session');
+        Route::post('/record', [InventoryController::class, 'recordCount'])->name('record-count');
+        Route::post('/close-session/{id}', [InventoryController::class, 'closeSession'])->name('close-session');
+    });
 
     // ========================================
     // SUPPLIERS (Role checked in controller)

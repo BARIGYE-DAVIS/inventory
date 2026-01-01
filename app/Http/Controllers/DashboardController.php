@@ -212,6 +212,18 @@ class DashboardController extends Controller
             $availableYears->prepend(now()->year);
         }
 
+        // Period closing information
+        $lastClosedPeriod = \App\Models\InventoryPeriod::where('business_id', $businessId)
+            ->where('status', 'closed')
+            ->latest('period_end')
+            ->first();
+        
+        $lastMonthEnd = now()->subMonth()->endOfMonth();
+        $nextMonthEnd = now()->endOfMonth();
+        if (now()->day >= 28) { // If we're near or past month end
+            $nextMonthEnd = now()->addMonth()->endOfMonth();
+        }
+
         return view('dashboard', [
             // Today's data
             'todaySales' => $todaySales,
@@ -295,6 +307,10 @@ class DashboardController extends Controller
 
             // Role
             'userRole' => $userRole,
+
+            // Period closing
+            'lastClosedPeriod' => $lastClosedPeriod,
+            'nextMonthEnd' => $nextMonthEnd,
         ]);
     }
 

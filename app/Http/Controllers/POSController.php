@@ -154,6 +154,11 @@ class POSController extends Controller
             foreach ($validated['items'] as $item) {
                 $product = Product::findOrFail($item['product_id']);
 
+                // Check if product is out of stock
+                if ($product->quantity <= 0) {
+                    throw new \Exception("{$product->name} is out of stock and cannot be sold.");
+                }
+
                 // Check stock
                 if ($product->quantity < $item['quantity']) {
                     throw new \Exception("Insufficient stock for {$product->name}. Available: {$product->quantity}");

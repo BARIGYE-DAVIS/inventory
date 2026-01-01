@@ -19,6 +19,31 @@
                 transform: translateX(-100%);
             }
         }
+        /* Accordion Styles */
+        .accordion-header {
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.3s ease;
+        }
+        .accordion-header:hover {
+            background-color: rgba(120, 53, 15, 0.5);
+        }
+        .accordion-icon {
+            transition: transform 0.3s ease;
+        }
+        .accordion-icon.collapsed {
+            transform: rotate(-90deg);
+        }
+        .accordion-content {
+            max-height: 500px;
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            opacity: 1;
+        }
+        .accordion-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
     </style>
     @stack('styles')
 </head>
@@ -42,17 +67,18 @@
             </div>
 
             <!-- Navigation -->
-            <nav class="p-4 space-y-2">
+            <nav class="p-4 space-y-1">
                 <!-- Dashboard -->
                 <a href="{{ route('cashier.dashboard') }}" class="flex items-center space-x-3 p-3 rounded-lg {{ request()->routeIs('cashier.dashboard') ? 'bg-yellow-800' : 'hover:bg-yellow-800' }}">
                     <i class="fas fa-home text-lg"></i>
                     <span>My Dashboard</span>
                 </a>
 
-                          <a href="{{ route('profit.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-yellow-800">
-    <i class="fas fa-chart-pie text-lg"></i>
-    <span>My Profit</span>
-</a>
+                <!-- My Profit -->
+                <a href="{{ route('profit.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-yellow-800">
+                    <i class="fas fa-chart-pie text-lg"></i>
+                    <span>My Profit</span>
+                </a>
 
                 <!-- NEW SALE (BIGGEST BUTTON) -->
                 <a href="{{ route('pos.index') }}" class="flex items-center justify-center space-x-3 p-4 rounded-lg bg-green-600 hover:bg-green-700 text-white font-bold text-lg shadow-lg">
@@ -60,45 +86,49 @@
                     <span>NEW SALE</span>
                 </a>
 
-                <!-- ... existing sidebar code ... -->
+                <!-- Invoices/Credit Sales -->
+                <a href="{{ route('cashier.invoices.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-yellow-800">
+                    <i class="fas fa-file-invoice-dollar text-lg"></i>
+                    <span>Invoices</span>
+                </a>
 
-<li>
-    <a href="{{ route('cashier.invoices.index') }}"
-       class="flex items-center px-4 py-2 text-gray-700 rounded-md hover:bg-indigo-600 hover:text-white transition group {{ request()->routeIs('cashier.invoices.*') ? 'bg-indigo-100 text-indigo-700 font-bold' : '' }}">
-        <i class="fas fa-file-invoice-dollar text-indigo-500 group-hover:text-white w-5"></i>
-        <span class="ml-3">Invoices</span>
-    </a>
-</li>
-
-<!-- ... further sidebar code ... -->
-
-
-
-                <!-- My Sales -->
-                <div class="space-y-1">
-                    <div class="flex items-center space-x-3 p-3 text-yellow-200 font-semibold">
-                        <i class="fas fa-receipt text-lg"></i>
-                        <span>My Sales</span>
+                <!-- My Sales Accordion -->
+                <div class="accordion-group">
+                    <div onclick="toggleAccordion(event, 'sales')" class="accordion-header flex items-center justify-between space-x-3 p-3 rounded-lg {{ request()->routeIs('sales.*') ? 'bg-yellow-700' : '' }}">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-receipt text-lg"></i>
+                            <span>My Sales</span>
+                        </div>
+                        <i class="fas fa-chevron-down accordion-icon text-xs {{ request()->routeIs('sales.*') ? '' : 'collapsed' }}"></i>
                     </div>
-                    <a href="{{ route('sales.index') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-yellow-800">
-                        <i class="fas fa-list text-sm"></i>
-                        <span>All My Sales</span>
-                    </a>
-                    <a href="{{ route('sales.today') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-yellow-800">
-                        <i class="fas fa-calendar-day text-sm"></i>
-                        <span>Today's Sales</span>
-                    </a>
+                    <div id="sales" class="accordion-content {{ request()->routeIs('sales.*') ? '' : 'collapsed' }} space-y-1">
+                        <a href="{{ route('sales.index') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-yellow-800">
+                            <i class="fas fa-list text-sm"></i>
+                            <span>All My Sales</span>
+                        </a>
+                        <a href="{{ route('sales.today') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-yellow-800">
+                            <i class="fas fa-calendar-day text-sm"></i>
+                            <span>Today's Sales</span>
+                        </a>
+                    </div>
                 </div>
 
-                {{-- Cashier Expenses links --}}
-<div class="space-y-1">
-  <div class="flex items-center space-x-3 p-3 text-indigo-300 font-semibold">
-    <i class="fas fa-wallet text-lg"></i><span>Expenses</span>
-  </div>
-  <a href="{{ route('cashier.expenses.create') }}" class="block p-3 pl-12 hover:bg-indigo-800">Record Expense</a>
-  <!--<a href="{{ route('cashier.expenses.my') }}" class="block p-3 pl-12 hover:bg-indigo-800">My Expenses</a>-->
- <!-- <a href="{{ route('cashier.expenses.today') }}" class="block p-3 pl-12 hover:bg-indigo-800">Today</a>-->
-</div>
+                <!-- Expenses Accordion -->
+                <div class="accordion-group">
+                    <div onclick="toggleAccordion(event, 'expenses')" class="accordion-header flex items-center justify-between space-x-3 p-3 rounded-lg {{ request()->routeIs('cashier.expenses.*') ? 'bg-yellow-700' : '' }}">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-wallet text-lg"></i>
+                            <span>Expenses</span>
+                        </div>
+                        <i class="fas fa-chevron-down accordion-icon text-xs {{ request()->routeIs('cashier.expenses.*') ? '' : 'collapsed' }}"></i>
+                    </div>
+                    <div id="expenses" class="accordion-content {{ request()->routeIs('cashier.expenses.*') ? '' : 'collapsed' }} space-y-1">
+                        <a href="{{ route('cashier.expenses.create') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg hover:bg-yellow-800">
+                            <i class="fas fa-plus text-sm"></i>
+                            <span>Record Expense</span>
+                        </a>
+                    </div>
+                </div>
 
                 <!-- My Performance -->
                 <a href="{{ route('cashier.performance') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-yellow-800">
@@ -223,6 +253,25 @@
     </div>
 
     <script>
+        // ========================================
+        // ✅ ACCORDION TOGGLE
+        // ========================================
+        function toggleAccordion(event, accordionId) {
+            event.preventDefault();
+            const content = document.getElementById(accordionId);
+            const icon = event.currentTarget.querySelector('.accordion-icon');
+            
+            content.classList.toggle('collapsed');
+            icon.classList.toggle('collapsed');
+            
+            // Save accordion state to localStorage
+            const isCollapsed = content.classList.contains('collapsed');
+            localStorage.setItem(`accordion-${accordionId}`, isCollapsed ? 'collapsed' : 'expanded');
+        }
+
+        // ========================================
+        // ✅ SIDEBAR TOGGLE
+        // ========================================
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             sidebar.classList.toggle('hidden-mobile');
