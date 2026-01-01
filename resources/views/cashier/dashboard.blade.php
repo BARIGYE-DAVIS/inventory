@@ -49,10 +49,10 @@
                 </div>
                 <p class="text-xs text-yellow-200 mt-1">💰 Cashier Dashboard</p>
             </div>
-            <a href="{{ route('profit.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-yellow-800">
+<!--<a href="{{ route('profit.index') }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-yellow-800">
     <i class="fas fa-chart-pie text-lg"></i>
     <span>My Profit</span>
-</a>
+</a> -->
             <!-- Navigation -->
             <nav class="p-4 space-y-2">
                 <!-- Dashboard -->
@@ -68,13 +68,20 @@
                 </a>
             <!-- ... existing sidebar code ... -->
 
-<li>
-    <a href="{{ route('cashier.invoices.index') }}"
-       class="flex items-center px-4 py-2 text-gray-700 rounded-md hover:bg-indigo-600 hover:text-white transition group {{ request()->routeIs('cashier.invoices.*') ? 'bg-indigo-100 text-indigo-700 font-bold' : '' }}">
-        <i class="fas fa-file-invoice-dollar text-indigo-500 group-hover:text-white w-5"></i>
-        <span class="ml-3">Invoices</span>
-    </a>
-</li>
+
+<div>
+
+<a href="{{ route('cashier.invoices.index') }}"
+   class="flex items-center px-4 py-2 rounded-md transition group
+   {{ request()->routeIs('cashier.invoices.*') 
+        ? 'bg-indigo-100 text-indigo-700 font-bold' 
+        : 'text-gray-700 hover:bg-indigo-600 hover:text-white' }}">
+    <i class="fas fa-file-invoice-dollar w-5 mr-2 transition-colors 
+        {{ request()->routeIs('cashier.invoices.*') 
+            ? 'text-indigo-600' 
+            : 'text-indigo-500 group-hover:text-white' }}"></i>
+    <span class="ml-1">Invoices</span>
+</a>
 
 <!-- ... further sidebar code ... -->
                 <!-- My Sales -->

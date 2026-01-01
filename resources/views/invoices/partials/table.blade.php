@@ -40,10 +40,13 @@
                     </button>
                 </form>
 
-                 <form action="{{ route('invoices.markPaid', $invoice->id) }}" method="POST" class="inline" onsubmit="return confirm('Mark this invoice as paid?');">
-                            @csrf
-                            <button type="submit" class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-xs">Mark Paid</button>
-                </form>
+@if($invoice->status !== 'paid')
+    <a href="{{ route('invoices.payForm', $invoice->id) }}"
+       class="inline-block bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-xs"
+       title="Make Payment">
+       <i class="fas fa-coins"></i> Make Payment
+    </a>
+@endif
             </td>
         </tr>
     @empty

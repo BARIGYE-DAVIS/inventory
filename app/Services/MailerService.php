@@ -115,8 +115,9 @@ class MailerService
 
     /**
      * Send a PAID invoice receipt email/PDF using per-business mailer settings.
+     * Now accepts the payment object/record.
      */
-    public static function sendInvoiceReceipt(Invoice $invoice): void
+    public static function sendInvoiceReceipt(Invoice $invoice, $payment): void
     {
         $business = $invoice->business;
         $customer = $invoice->customer;
@@ -129,6 +130,13 @@ class MailerService
         }
 
         try {
+            if (!$payment) {
+                Log::error('No payment record provided for invoice receipt', [
+                    'invoice_id' => $invoice->id,
+                ]);
+                return;
+            }
+
             if ($business && $business->hasEmailConfigured()) {
                 $mailerName = 'business_' . $business->id;
                 $baseMailer = config('mail.mailers.smtp', []);
@@ -140,7 +148,7 @@ class MailerService
 
                 Mail::mailer($mailerName)
                     ->to($customer->email)
-                    ->send(new InvoicePaidReceiptMail($invoice));
+                    ->send(new InvoicePaidReceiptMail($invoice, $payment));
 
                 Log::info('Paid receipt sent via business email', [
                     'invoice_id' => $invoice->id,
@@ -149,7 +157,7 @@ class MailerService
                 ]);
             } else {
                 Mail::to($customer->email)
-                    ->send(new InvoicePaidReceiptMail($invoice));
+                    ->send(new InvoicePaidReceiptMail($invoice, $payment));
                 Log::info('Paid receipt sent via default email', [
                     'invoice_id' => $invoice->id,
                     'to' => $customer->email,

@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany};
+use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany, HasManyThrough};
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Customer extends Model
@@ -33,6 +33,23 @@ class Customer extends Model
     public function sales(): HasMany
     {
         return $this->hasMany(Sale::class);
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function payments(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            Payment::class,
+            Invoice::class,
+            'customer_id',   // Foreign key on Invoice table...
+            'invoice_id',    // Foreign key on Payment table...
+            'id',            // Local key on Customer table...
+            'id'             // Local key on Invoice table...
+        );
     }
 
     public function getTotalPurchases(): float
