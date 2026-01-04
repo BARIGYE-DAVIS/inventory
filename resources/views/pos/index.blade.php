@@ -381,6 +381,49 @@ function exactAmount() {
     document.getElementById('amountPaid').value = total;
     calculateChange();
 }
+
+function showSuccessToast(message) {
+    const toastId = 'toast-' + Date.now();
+    const toast = document.createElement('div');
+    toast.id = toastId;
+    toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3 animate-slideIn z-50';
+    toast.innerHTML = `
+        <i class="fas fa-check-circle text-xl"></i>
+        <div>
+            <p class="font-semibold">Success!</p>
+            <p class="text-sm text-green-100">${message}</p>
+        </div>
+    `;
+    document.body.appendChild(toast);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease-in-out';
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+function showErrorToast(message) {
+    const toastId = 'toast-' + Date.now();
+    const toast = document.createElement('div');
+    toast.id = toastId;
+    toast.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3 animate-slideIn z-50';
+    toast.innerHTML = `
+        <i class="fas fa-exclamation-circle text-xl"></i>
+        <div>
+            <p class="font-semibold">Error!</p>
+            <p class="text-sm text-red-100">${message}</p>
+        </div>
+    `;
+    document.body.appendChild(toast);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease-in-out';
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
 async function processSale() {
     if (cart.length === 0) {
         alert('Cart is empty!');
@@ -439,6 +482,10 @@ async function processSale() {
             paymentType === "invoice"
             ? "{{ route('invoices.pos') }}"
             : "{{ route('pos.process') }}";
+        
+        console.log('Posting to:', endpoint);
+        console.log('Payload:', saleData);
+        
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
@@ -447,8 +494,25 @@ async function processSale() {
             },
             body: JSON.stringify(saleData)
         });
-        const result = await response.json();
-        if (result.success) {
+        
+        console.log('Response status:', response.status);
+        const text = await response.text();
+        console.log('Response text:', text);
+        
+        let result;
+        try {
+            result = JSON.parse(text);
+        } catch (e) {
+            console.error('Failed to parse JSON:', e);
+            alert('Error: Server returned invalid response\n' + text);
+            return;
+        }
+        
+        console.log('Parsed result:', result);
+        
+        if (result && result.success) {
+            console.log('Sale successful, showing receipt');
+            console.log('Data:', result);
             showReceipt(result);
             cart = [];
             renderCart();
@@ -465,12 +529,16 @@ async function processSale() {
             document.getElementById('newCustomerEmail').value = '';
             document.getElementById('newCustomerAddress').value = '';
             calculateChange();
+        } else if (result && result.message) {
+            console.error('Sale failed:', result.message);
+            showErrorToast(result.message);
         } else {
-            alert('Error: ' + result.message);
+            console.error('Unknown error:', result);
+            showErrorToast('An unknown error occurred. Please try again.');
         }
     } catch (error) {
-        alert('Failed to process sale. Please try again.');
-        console.error(error);
+        console.error('Fetch error:', error);
+        showErrorToast('Failed to process sale. Please check your connection and try again.');
     } finally {
         checkoutBtn.disabled = false;
         let paymentType2 = document.querySelector('input[name="payment_type"]:checked').value;
@@ -479,8 +547,16 @@ async function processSale() {
     }
 }
 function showReceipt(data) {
+    // Receipt modal itself shows success - no need for extra toast
     const modal = document.getElementById('receiptModal');
     const content = document.getElementById('receiptContent');
+    
+    if (!modal || !content) {
+        console.error('Modal or content element not found!');
+        alert('Receipt display error. Sale #' + (data.sale_number || data.invoice_number) + ' completed successfully!');
+        return;
+    }
+    
     let html = `
         <div class="p-6">
             <div class="text-center mb-6">
@@ -529,8 +605,15 @@ function showReceipt(data) {
             </div>
         </div>
     `;
-    content.innerHTML = html;
-    modal.classList.remove('hidden');
+    
+    try {
+        content.innerHTML = html;
+        modal.classList.remove('hidden');
+        console.log('Receipt modal displayed successfully');
+    } catch (error) {
+        console.error('Error displaying receipt modal:', error);
+        alert('Sale #' + (data.sale_number || data.invoice_number) + ' completed successfully!');
+    }
 }
 function closeReceipt() {
     document.getElementById('receiptModal').classList.add('hidden');

@@ -11,40 +11,84 @@
 
      @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            height: 100%;
+            width: 100%;
+        }
+        
+        body {
+            background-color: #f3f4f6;
+        }
+        
+        body > div {
+            display: flex;
+            height: 100vh;
+            width: 100%;
+            overflow: hidden;
+        }
+        
         .sidebar {
-            transition: width 0.3s ease-in-out;
-            width: 16rem; /* w-64 = 16rem */
+            flex: 0 0 16rem;
+            width: 16rem;
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            transition: flex 0.3s ease-in-out, width 0.3s ease-in-out;
+            position: relative;
+            z-index: 20;
+        }
+        
+        .sidebar + div {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            overflow: hidden;
+            position: relative;
+            z-index: 10;
         }
         
         .sidebar.collapsed {
-            width: 5rem !important; /* Narrow icon-only mode */
+            flex: 0 0 5rem;
+            width: 5rem;
         }
         
         .sidebar.collapsed .sidebar-text {
-            display: none !important;
+            display: none;
         }
         
         .sidebar.collapsed .sidebar-icon-only {
-            justify-content: center !important;
+            justify-content: center;
         }
         
-        /* Show text on sidebar hover when collapsed */
         .sidebar.collapsed:hover {
-            width: 16rem !important;
-            position: fixed;
+            flex: 0 0 16rem;
+            width: 16rem;
+            position: absolute;
+            left: 0;
+            top: 0;
             z-index: 50;
         }
         
         .sidebar.collapsed:hover .sidebar-text {
-            display: inline !important;
-        }
-        
-        /* Main content expands when sidebar collapses */
-        .main-content {
-            transition: margin-left 0.3s ease-in-out;
+            display: inline;
         }
 
         @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                z-index: 40;
+                height: 100vh;
+            }
+            
             .sidebar.hidden-mobile {
                 transform: translateX(-100%);
             }
@@ -76,6 +120,59 @@
         .accordion-content.collapsed {
             max-height: 0;
             opacity: 0;
+        }
+        
+        /* Animation for success/alert messages */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .animate-fadeIn {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes slideOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
+        
+        .animate-slideIn {
+            animation: slideIn 0.3s ease-in-out;
         }
         
         /* Fullscreen Mode */
@@ -128,7 +225,7 @@
     <div class="flex h-screen overflow-hidden">
         
         <!-- SIDEBAR -->
-        <aside id="sidebar" class="sidebar fixed md:relative z-20 w-64 bg-indigo-900 text-white overflow-y-auto h-screen">
+        <aside id="sidebar" class="sidebar bg-indigo-900 text-white">
             <!-- Logo -->
             <div class="p-4 border-b border-indigo-800">
                 <div class="flex items-center justify-between">
@@ -250,6 +347,11 @@
                             <i class="fas fa-list-check text-sm flex-shrink-0"></i>
                             <span class="sidebar-text">Stock Taking</span>
                         </a>
+                        {{-- Period Closing History - Disabled for later activation --}}
+                        {{-- <a href="{{ route('inventory.periods') }}" class="flex items-center space-x-3 p-3 pl-12 rounded-lg {{ request()->routeIs('inventory.periods', 'inventory.reconciliation') ? 'bg-indigo-800' : 'hover:bg-indigo-800' }}">
+                            <i class="fas fa-balance-scale text-sm flex-shrink-0"></i>
+                            <span class="sidebar-text">Period Closing History</span>
+                        </a> --}}
                     </div>
                 </div>
 

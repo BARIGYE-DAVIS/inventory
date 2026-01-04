@@ -151,6 +151,8 @@ Route::middleware(['auth'])->group(function () {
     // ========================================
     Route::get('/inventory/activities', [InventoryController::class, 'activities'])->name('inventory.activities');
     Route::get('/inventory/periods', [InventoryController::class, 'periods'])->name('inventory.periods');
+    Route::get('/inventory/reconciliation/{periodId}', [InventoryController::class, 'showReconciliation'])->name('inventory.reconciliation');
+    Route::get('/api/inventory/reconciliation/{productId}/{periodStart?}/{periodEnd?}', [InventoryController::class, 'getReconciliation'])->name('api.inventory.reconciliation');
     Route::resource('inventory', InventoryController::class);
 
     // ========================================

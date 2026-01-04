@@ -41,11 +41,7 @@ class POSController extends Controller
             ->orderBy('name')
             ->get();
 
-        // Load different view based on role
-        if ($userRole === 'cashier') {
-            return view('cashier.pos', compact('products', 'categories', 'customers'));
-        }
-
+        // Use same POS view for both owner and cashier (with proper AJAX handling)
         return view('pos.index', compact('products', 'categories', 'customers'));
     }
 
@@ -221,8 +217,8 @@ class POSController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to process sale: ' . $e->getMessage(),
-            ], 500);
+                'message' => $e->getMessage(),
+            ], 400);
         }
     }
 

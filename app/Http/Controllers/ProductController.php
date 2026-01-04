@@ -79,7 +79,7 @@ class ProductController extends Controller
                     : '<div class="w-full h-full flex items-center justify-center"><i class="fas fa-box text-4xl text-gray-300"></i></div>';
                 
                 $html .= '
-                <a href="' . route('products. show', $product->id) .  '" class="border border-gray-200 rounded-lg p-3 hover:shadow-lg transition cursor-pointer">
+                <a href="' . route('products.show', $product->id) .  '" class="border border-gray-200 rounded-lg p-3 hover:shadow-lg transition cursor-pointer">
                     <div class="aspect-square bg-gray-100 rounded-lg mb-2 overflow-hidden">
                         ' . $imageHtml . '
                     </div>
@@ -182,13 +182,13 @@ public function store(Request $request)
     // ✅ UPDATED VALIDATION RULES
     $validated = $request->validate([
         'name' => 'required|string|max:255',
-        'sku' => 'nullable|string|max:100',
+        'sku' => 'nullable|string|max:100|unique:products,sku,NULL,id,business_id,' . $user->business_id,
         'barcode' => 'nullable|string|max:100',
         'unit' => 'required|string',
         
-        // ✅ Category handling
+        // ✅ Category handling - conditional validation
         'category_id' => 'nullable|exists:categories,id',
-        'new_category_name' => 'required_without:category_id|string|max:255',
+        'new_category_name' => 'nullable|string|max:255',
         'new_category_description' => 'nullable|string',
         
         'cost_price' => 'required|numeric|min:0',
@@ -205,6 +205,13 @@ public function store(Request $request)
         'description' => 'nullable|string',
         'image' => 'nullable|image|max:2048',
     ]);
+
+    // ✅ Validate that either category_id or new_category_name is provided
+    if (empty($validated['category_id']) && empty($validated['new_category_name'])) {
+        return redirect()->back()->withErrors([
+            'new_category_name' => 'Please either select an existing category or create a new one.'
+        ])->withInput();
+    }
 
     // ✅ HANDLE NEW CATEGORY CREATION
     if ($request->filled('new_category_name') && !$request->filled('category_id')) {
@@ -226,10 +233,15 @@ public function store(Request $request)
         $validated['image'] = $request->file('image')->store('products', 'public');
     }
 
-    // ✅ SET DEFAULT QUANTITY IF NOT PROVIDED
-    if (!isset($validated['quantity'])) {
-        $validated['quantity'] = 0;
+    // ✅ MAP QUANTITY TO OPENING_STOCK (for initial stock entry)
+    if (isset($validated['quantity']) && $validated['quantity']) {
+        $validated['opening_stock'] = $validated['quantity'];
+    } else {
+        $validated['opening_stock'] = 0;
     }
+    
+    // ✅ SET QUANTITY TO OPENING_STOCK VALUE (they should be the same initially)
+    $validated['quantity'] = $validated['opening_stock'];
 
     // ✅ REMOVE FIELDS NOT IN PRODUCT TABLE
     unset($validated['new_category_name']);

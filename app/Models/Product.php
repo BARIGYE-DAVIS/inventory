@@ -23,6 +23,7 @@ class Product extends Model
         'selling_price',
         'reorder_level',
         'quantity',              // ✅ ADDED
+        'opening_stock',         // ✅ ADDED - Initial stock value
         'barcode',
         'image',
         'manufacture_date',
@@ -37,6 +38,7 @@ class Product extends Model
         'cost_price' => 'decimal:2',
         'selling_price' => 'decimal:2',
         'quantity' => 'decimal:2',    // ✅ ADDED
+        'opening_stock' => 'decimal:2',  // ✅ ADDED
         'has_variants' => 'boolean',
         'is_active' => 'boolean',
         'track_expiry' => 'boolean',

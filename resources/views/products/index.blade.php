@@ -9,6 +9,92 @@
 @section('content')
 <div class="bg-white rounded-xl shadow-lg p-6">
     
+    <!-- Success Message -->
+    @if (session('success'))
+        <div id="successAlert" class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg animate-fadeIn">
+            <div class="flex items-start">
+                <i class="fas fa-check-circle text-green-600 mt-1 mr-3 text-lg"></i>
+                <div>
+                    <h3 class="font-semibold text-green-800">Success!</h3>
+                    <p class="text-green-700 text-sm">{{ session('success') }}</p>
+                </div>
+                <button onclick="document.getElementById('successAlert').remove()" class="ml-auto text-green-600 hover:text-green-800">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    @endif
+    
+    <!-- Low Stock Alert Section -->
+    @php
+        $lowStockProducts = $products->filter(function($product) {
+            return $product->isLowStock() && !$product->isOutOfStock();
+        });
+        $outOfStockProducts = $products->filter(function($product) {
+            return $product->isOutOfStock();
+        });
+    @endphp
+    
+    @if($lowStockProducts->count() > 0)
+        <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div class="flex items-start">
+                <i class="fas fa-exclamation-triangle text-yellow-600 mt-1 mr-3 text-lg"></i>
+                <div class="flex-1">
+                    <h3 class="font-semibold text-yellow-800">⚠️ Low Stock Alert</h3>
+                    <p class="text-yellow-700 text-sm mt-1">{{ $lowStockProducts->count() }} product(s) have reached reorder level:</p>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        @foreach($lowStockProducts->take(5) as $product)
+                            <span class="inline-flex items-center px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full">
+                                {{ $product->name }} ({{ $product->quantity }}/{{ $product->reorder_level }})
+                            </span>
+                        @endforeach
+                        @if($lowStockProducts->count() > 5)
+                            <span class="inline-flex items-center px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full">
+                                +{{ $lowStockProducts->count() - 5 }} more
+                            </span>
+                        @endif
+                    </div>
+                    <a href="{{ route('products.index', ['status' => 'low_stock']) }}" class="text-yellow-700 underline text-sm mt-2 inline-block hover:text-yellow-900">
+                        View all low stock products →
+                    </a>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" class="text-yellow-600 hover:text-yellow-800">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    @endif
+    
+    @if($outOfStockProducts->count() > 0)
+        <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div class="flex items-start">
+                <i class="fas fa-times-circle text-red-600 mt-1 mr-3 text-lg"></i>
+                <div class="flex-1">
+                    <h3 class="font-semibold text-red-800">🔴 Out of Stock</h3>
+                    <p class="text-red-700 text-sm mt-1">{{ $outOfStockProducts->count() }} product(s) are out of stock:</p>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        @foreach($outOfStockProducts->take(5) as $product)
+                            <span class="inline-flex items-center px-3 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded-full">
+                                {{ $product->name }}
+                            </span>
+                        @endforeach
+                        @if($outOfStockProducts->count() > 5)
+                            <span class="inline-flex items-center px-3 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded-full">
+                                +{{ $outOfStockProducts->count() - 5 }} more
+                            </span>
+                        @endif
+                    </div>
+                    <a href="{{ route('products.index', ['status' => 'out_of_stock']) }}" class="text-red-700 underline text-sm mt-2 inline-block hover:text-red-900">
+                        View all out of stock products →
+                    </a>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" class="text-red-600 hover:text-red-800">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    @endif
+    
     <!-- Header -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 space-y-4 md:space-y-0">
         <div>
@@ -308,6 +394,17 @@
             filterForm.submit();
         }
     });
+
+    // ✅ Auto-dismiss success alert after 5 seconds
+    const successAlert = document.getElementById('successAlert');
+    if (successAlert) {
+        setTimeout(function() {
+            successAlert.style.animation = 'fadeOut 0.3s ease-in-out';
+            setTimeout(function() {
+                successAlert.remove();
+            }, 300);
+        }, 5000); // 5 second delay
+    }
 </script>
 @endpush
 @endsection

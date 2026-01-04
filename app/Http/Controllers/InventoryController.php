@@ -7,6 +7,8 @@ use App\Models\SaleItem;
 use App\Models\PurchaseItem;
 use App\Models\StockTakingSession;
 use App\Models\StockAdjustment;
+use App\Models\InventoryPeriod;
+use App\Services\StockReconciliationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -67,6 +69,9 @@ class InventoryController extends Controller
 
         // Calculate stock movements for each product
         $inventoryActivities = $products->map(function($product) use ($businessId) {
+            // Get opening stock from products table (fixed value)
+            $openingStock = $product->opening_stock;
+
             // Get total sales quantity for this product
             $totalSales = SaleItem::whereHas('sale', function($q) use ($businessId) {
                 $q->where('business_id', $businessId);
@@ -81,21 +86,20 @@ class InventoryController extends Controller
             ->where('product_id', $product->id)
             ->sum('quantity');
 
-            // Calculate opening stock
-            $currentStock = $product->quantity;
-            $openingStock = $currentStock - $totalPurchases + $totalSales;
+            // Calculate current stock: Opening + Purchases - Sales
+            $currentStock = $openingStock + $totalPurchases - $totalSales;
 
             return [
                 'product_id' => $product->id,
                 'product_name' => $product->name,
                 'category' => $product->category->name ?? 'N/A',
-                'opening_stock' => max(0, $openingStock),
+                'opening_stock' => $openingStock,
                 'purchases' => $totalPurchases,
                 'sales' => $totalSales,
                 'current_stock' => $currentStock,
                 'cost_price' => $product->cost_price,
                 'selling_price' => $product->selling_price,
-                'opening_value' => max(0, $openingStock) * $product->cost_price,
+                'opening_value' => $openingStock * $product->cost_price,
                 'purchases_value' => $totalPurchases * $product->cost_price,
                 'sales_value' => $totalSales * $product->selling_price,
                 'current_value' => $currentStock * $product->cost_price,
@@ -304,5 +308,46 @@ class InventoryController extends Controller
             ->paginate(50);
 
         return view('inventory.periods', compact('periods'));
+    }
+
+    /**
+     * Show detailed stock reconciliation for a period
+     */
+    public function showReconciliation($periodId)
+    {
+        $businessId = Auth::user()->business_id;
+
+        $period = InventoryPeriod::where('business_id', $businessId)
+            ->with(['product', 'product.category'])
+            ->findOrFail($periodId);
+
+        $product = $period->product;
+        $reconciliation = StockReconciliationService::getReconciliationFromPeriod($period);
+
+        return view('inventory.reconciliation', compact('period', 'product', 'reconciliation'));
+    }
+
+    /**
+     * Get reconciliation for any product and period (API endpoint)
+     */
+    public function getReconciliation($productId, $periodStart = null, $periodEnd = null)
+    {
+        $businessId = Auth::user()->business_id;
+
+        $product = Product::where('business_id', $businessId)->findOrFail($productId);
+
+        // Use last month if not specified
+        if (!$periodStart || !$periodEnd) {
+            $now = \Carbon\Carbon::now();
+            $periodEnd = $now->copy()->subMonth()->endOfMonth();
+            $periodStart = $now->copy()->subMonth()->startOfMonth();
+        } else {
+            $periodStart = \Carbon\Carbon::parse($periodStart);
+            $periodEnd = \Carbon\Carbon::parse($periodEnd);
+        }
+
+        $reconciliation = StockReconciliationService::calculateReconciliation($product, $periodStart, $periodEnd);
+
+        return response()->json($reconciliation);
     }
 }

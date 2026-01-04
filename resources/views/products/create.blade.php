@@ -10,6 +10,23 @@
 <div class="max-w-4xl mx-auto">
     <div class="bg-white rounded-xl shadow-lg p-6">
         
+        <!-- Display Validation Errors -->
+        @if ($errors->any())
+            <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div class="flex items-start">
+                    <i class="fas fa-exclamation-circle text-red-600 mt-1 mr-3"></i>
+                    <div>
+                        <h3 class="font-semibold text-red-800 mb-2">Validation Errors</h3>
+                        <ul class="list-disc list-inside space-y-1 text-red-700 text-sm">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        @endif
+        
         <form method="POST" action="{{ route('products.store') }}" enctype="multipart/form-data">
             @csrf
 
@@ -22,19 +39,31 @@
                         Product Name <span class="text-red-500">*</span>
                     </label>
                     <input type="text" name="name" value="{{ old('name') }}" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 @error('name') border-red-500 @enderror"
                            placeholder="e.g., Samsung Galaxy A54">
+                    @error('name')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- SKU -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-barcode text-indigo-600 mr-1"></i>
-                        SKU <span class="text-red-500">*</span>
+                        SKU <span class="text-gray-500 text-sm">(Optional)</span>
                     </label>
-                    <input type="text" name="sku" value="{{ old('sku') }}" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    <input type="text" name="sku" value="{{ old('sku') }}"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 @error('sku') border-red-500 @enderror"
                            placeholder="e.g., PROD-001">
+                    @error('sku')
+                        <p class="text-red-500 text-xs mt-1">
+                            @if(str_contains($message, 'unique'))
+                                This SKU is already used for another product. Please use a different SKU.
+                            @else
+                                {{ $message }}
+                            @endif
+                        </p>
+                    @enderror
                 </div>
 
                 <!-- Barcode -->
@@ -110,7 +139,8 @@
                         <i class="fas fa-balance-scale text-indigo-600 mr-1"></i>
                         Unit <span class="text-red-500">*</span>
                     </label>
-                    <select name="unit" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    <select name="unit" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 @error('unit') border-red-500 @enderror">
+                        <option value="">-- Select Unit --</option>
                         <option value="pcs" {{ old('unit') == 'pcs' ? 'selected' : '' }}>Pieces (pcs)</option>
                         <option value="kg" {{ old('unit') == 'kg' ? 'selected' : '' }}>Kilograms (kg)</option>
                         <option value="grams" {{ old('unit') == 'grams' ? 'selected' : '' }}>Grams (g)</option>
@@ -121,8 +151,10 @@
                         <option value="dozen" {{ old('unit') == 'dozen' ? 'selected' : '' }}>Dozen</option>
                         <option value="pairs" {{ old('unit') == 'pairs' ? 'selected' : '' }}>Pairs</option>
                         <option value="meters" {{ old('unit') == 'meters' ? 'selected' : '' }}>Meters (m)</option>
-                        
                     </select>
+                    @error('unit')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- ✅ QUANTITY (Simple - No Location) -->
@@ -144,8 +176,11 @@
                         Cost Price (UGX) <span class="text-red-500">*</span>
                     </label>
                     <input type="number" name="cost_price" value="{{ old('cost_price') }}" required min="0" step="0.01"
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 @error('cost_price') border-red-500 @enderror"
                            placeholder="0">
+                    @error('cost_price')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- Selling Price -->
@@ -155,8 +190,11 @@
                         Selling Price (UGX) <span class="text-red-500">*</span>
                     </label>
                     <input type="number" name="selling_price" value="{{ old('selling_price') }}" required min="0" step="0.01"
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 @error('selling_price') border-red-500 @enderror"
                            placeholder="0">
+                    @error('selling_price')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- Reorder Level -->
@@ -249,12 +287,16 @@
             <!-- Action Buttons -->
             <div class="flex justify-end space-x-4 mt-6 pt-6 border-t">
                 <a href="{{ route('products.index') }}" 
-                   class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                   class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
                     <i class="fas fa-times mr-2"></i>Cancel
                 </a>
-                <button type="submit" 
-                        class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-                    <i class="fas fa-save mr-2"></i>Save Product
+                <button type="submit" id="submitBtn"
+                        class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 flex items-center space-x-2">
+                    <i class="fas fa-save mr-2"></i>
+                    <span id="submitText">Save Product</span>
+                    <span id="loadingSpinner" class="hidden">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </span>
                 </button>
             </div>
         </form>
@@ -276,13 +318,15 @@
             categorySelect.disabled = false;
             newCategoryInput.disabled = true;
             newCategoryInput.required = false;
+            newCategoryInput.value = ''; // Clear the field
         } else {
             existingDiv.classList.add('hidden');
             newDiv.classList.remove('hidden');
             categorySelect.disabled = true;
-            categorySelect.value = '';
+            categorySelect.value = ''; // Clear category selection
             newCategoryInput.disabled = false;
             newCategoryInput.required = true;
+            newCategoryInput.focus();
         }
     }
 
@@ -304,6 +348,28 @@
         const categoryOption = document.querySelector('input[name="category_option"]:checked');
         if (categoryOption) {
             toggleCategoryInput(categoryOption.value);
+        }
+
+        // Handle form submission with loading feedback
+        const form = document.querySelector('form');
+        const submitBtn = document.getElementById('submitBtn');
+        const submitText = document.getElementById('submitText');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        
+        if (form && submitBtn) {
+            form.addEventListener('submit', function(e) {
+                if (!form.checkValidity()) {
+                    e.preventDefault();
+                    alert('Please fill in all required fields');
+                    return;
+                }
+
+                // Show loading state
+                submitBtn.disabled = true;
+                submitText.classList.add('hidden');
+                loadingSpinner.classList.remove('hidden');
+                submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+            });
         }
     });
 </script>
